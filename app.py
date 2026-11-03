@@ -839,9 +839,10 @@ def registrar_venta():
         nombres = ' + '.join(p['nombre'] for p in pagos_ok)
         return jsonify({'ok': True, 'venta_grupo_id': grupo_id, 'total': total_general,
                         'metodo_pago_nombre': nombres, 'pagos': pagos_ok}), 201
-    except Exception:
+    except Exception as e:
         db.rollback()
-        return jsonify({'error': 'No se pudo registrar la venta. Ningún producto fue descontado.'}), 500
+        app.logger.error(f'Error registrar venta: {e}')
+        return jsonify({'error': f'No se pudo registrar la venta: {str(e)}'}), 500
 
 
 @app.route('/api/ventas/grupo/<int:gid>', methods=['PUT'])
@@ -925,13 +926,13 @@ def dashboard():
     so = db.execute("SELECT COUNT(*) FROM productos WHERE stock_maximo > 0 AND stock >= stock_maximo").fetchone()[0]
     vi = db.execute("SELECT SUM(stock*precio_compra) FROM productos").fetchone()[0] or 0
     vh = db.execute("SELECT COUNT(DISTINCT venta_grupo_id),SUM(total),SUM(ganancia) FROM ventas WHERE DATE(fecha)=%s", (hoy,)).fetchone()
-    vm = db.execute("SELECT COUNT(DISTINCT venta_grupo_id),SUM(total),SUM(ganancia) FROM ventas WHERE strftime('%Y-%m',fecha)=strftime('%Y-%m','now')").fetchone()
+    vm = db.execute("SELECT COUNT(DISTINCT venta_grupo_id),SUM(total),SUM(ganancia) FROM ventas WHERE DATE_FORMAT(fecha, '%Y-%m')=DATE_FORMAT(NOW(), '%Y-%m')").fetchone()
     top = db.execute("SELECT p.nombre,p.imagen_url,SUM(v.cantidad) as tv,SUM(v.total) as ing FROM ventas v JOIN productos p ON v.producto_id=p.id GROUP BY p.id ORDER BY tv DESC LIMIT 5").fetchall()
     v7 = db.execute("SELECT DATE(fecha) as dia,SUM(total) as total,SUM(ganancia) as ganancia FROM ventas WHERE fecha>=datetime('now','-7 days') GROUP BY dia ORDER BY dia").fetchall()
     cats = db.execute("SELECT categoria,SUM(stock) as ts,COUNT(*) as np FROM productos GROUP BY categoria").fetchall()
     metodos = db.execute("""SELECT m.nombre, COUNT(DISTINCT v.venta_grupo_id) as n, SUM(v.total) as t
                             FROM ventas v JOIN metodos_pago m ON v.metodo_pago_id=m.id
-                            WHERE strftime('%Y-%m',v.fecha)=strftime('%Y-%m','now')
+                            WHERE DATE_FORMAT(v.fecha, '%Y-%m')=DATE_FORMAT(NOW(), '%Y-%m')
                             GROUP BY m.id ORDER BY t DESC""").fetchall()
     return jsonify({
         'total_productos': tp, 'stock_bajo': sb, 'stock_exceso': so, 'valor_inventario': round(vi, 2),
