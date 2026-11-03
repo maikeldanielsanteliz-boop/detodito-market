@@ -1,148 +1,129 @@
-import sqlite3
 import os
-try:
-    import psycopg2
-    import psycopg2.extras
-except ImportError:
-    psycopg2 = None
+import mysql.connector
 from flask import g
 
-# Volumen de Railway
-_data_dir = '/data'
-os.makedirs(_data_dir, exist_ok=True)
-DATABASE = os.path.join(_data_dir, 'inventario.db')
+class MySQLRow(dict):
+    """Simula sqlite3.Row para acceso por nombre."""
+    def __getitem__(self, key):
+        if isinstance(key, int):
+            return list(self.values())[key]
+        return super().__getitem__(key)
+
+class MySQLCursor:
+    """Wrapper para que mysql.connector se parezca a sqlite3."""
+    def __init__(self, conn):
+        self.conn = conn
+        self.cursor = conn.cursor(dictionary=True)
+    
+    def execute(self, sql, params=None):
+        self.cursor.execute(sql, params or ())
+        return self
+    
+    def fetchone(self):
+        row = self.cursor.fetchone()
+        return MySQLRow(row) if row else None
+    
+    def fetchall(self):
+        return [MySQLRow(r) for r in self.cursor.fetchall()]
+    
+    def commit(self):
+        self.conn.commit()
+    
+    def rollback(self):
+        self.conn.rollback()
+    
+    def close(self):
+        self.cursor.close()
 
 def get_db():
     if 'db' not in g:
-        g.db = sqlite3.connect(DATABASE)
-        g.db.row_factory = sqlite3.Row
-        g.db.execute("PRAGMA foreign_keys = ON")
-        g.db.execute("PRAGMA journal_mode = WAL")
-        g.db.execute("PRAGMA synchronous = FULL")
+        conn = mysql.connector.connect(
+            host=os.environ.get('MYSQLHOST'),
+            user=os.environ.get('MYSQLUSER'),
+            password=os.environ.get('MYSQLPASSWORD'),
+            database=os.environ.get('MYSQLDATABASE'),
+            port=int(os.environ.get('MYSQLPORT', 3306)),
+            autocommit=False
+        )
+        g.db = MySQLCursor(conn)
+        g._conn = conn
     return g.db
 
 def init_db():
-    os.makedirs(os.path.dirname(DATABASE), exist_ok=True)
-    conn = sqlite3.connect(DATABASE)
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA journal_mode = WAL")
-    conn.execute("PRAGMA synchronous = FULL")
-    conn.executescript("""
+    db = get_db()
+    db.execute("""
         CREATE TABLE IF NOT EXISTS productos (
-            id              INTEGER PRIMARY KEY AUTOINCREMENT,
-            nombre          TEXT NOT NULL,
-            categoria       TEXT DEFAULT 'General',
-            descripcion     TEXT DEFAULT '',
-            precio_compra   REAL DEFAULT 0,
-            precio_venta    REAL DEFAULT 0,
-            stock           INTEGER DEFAULT 0,
-            stock_minimo    INTEGER DEFAULT 5,
-            stock_maximo    INTEGER DEFAULT 0,
-            unidad          TEXT DEFAULT 'unidad',
-            imagen_url      TEXT DEFAULT '',
-            codigo_barras   TEXT DEFAULT '',
-            fecha_creacion  TEXT DEFAULT (datetime('now'))
-        );
-        CREATE TABLE IF NOT EXISTS ventas (
-            id              INTEGER PRIMARY KEY AUTOINCREMENT,
-            producto_id     INTEGER NOT NULL,
-            cantidad        INTEGER NOT NULL,
-            precio_unitario REAL NOT NULL,
-            total           REAL NOT NULL,
-            ganancia        REAL DEFAULT 0,
-            notas           TEXT DEFAULT '',
-            fecha           TEXT DEFAULT (datetime('now')),
-            venta_grupo_id  INTEGER DEFAULT 0,
-            metodo_pago_id  INTEGER,
-            pago_referencia TEXT DEFAULT '',
-            FOREIGN KEY (producto_id) REFERENCES productos(id)
-        );
-        CREATE TABLE IF NOT EXISTS configuracion (
-            clave TEXT PRIMARY KEY,
-            valor TEXT
-        );
-        CREATE TABLE IF NOT EXISTS metodos_pago (
-            id                     INTEGER PRIMARY KEY AUTOINCREMENT,
-            nombre                 TEXT NOT NULL UNIQUE,
-            activo                 INTEGER DEFAULT 1,
-            orden                  INTEGER DEFAULT 0,
-            requiere_datos_moviles INTEGER DEFAULT 0,
-            datos_cedula           TEXT DEFAULT '',
-            datos_banco            TEXT DEFAULT '',
-            datos_telefono         TEXT DEFAULT ''
-        );
-        CREATE TABLE IF NOT EXISTS proveedores (
-            id              INTEGER PRIMARY KEY AUTOINCREMENT,
-            nombre          TEXT NOT NULL,
-            telefono        TEXT DEFAULT '',
-            rif_cedula      TEXT DEFAULT '',
-            direccion       TEXT DEFAULT '',
-            notas           TEXT DEFAULT '',
-            activo          INTEGER DEFAULT 1,
-            fecha_creacion  TEXT DEFAULT (datetime('now'))
-        );
-        CREATE INDEX IF NOT EXISTS idx_codigo_barras ON productos(codigo_barras);
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            nombre VARCHAR(255) NOT NULL,
+            categoria VARCHAR(100) DEFAULT 'General',
+            descripcion TEXT,
+            precio_compra DECIMAL(10,2) DEFAULT 0,
+            precio_venta DECIMAL(10,2) DEFAULT 0,
+            stock DECIMAL(10,4) DEFAULT 0,
+            stock_minimo INT DEFAULT 5,
+            stock_maximo INT DEFAULT 0,
+            unidad VARCHAR(50) DEFAULT 'unidad',
+            imagen_url VARCHAR(500) DEFAULT '',
+            codigo_barras VARCHAR(100) DEFAULT '',
+            proveedor_id INT DEFAULT NULL,
+            tipo_medida VARCHAR(50) DEFAULT 'unidad',
+            fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
     """)
+    db.execute("""
+        CREATE TABLE IF NOT EXISTS ventas (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            producto_id INT NOT NULL,
+            cantidad DECIMAL(10,4) NOT NULL,
+            precio_unitario DECIMAL(10,2) NOT NULL,
+            total DECIMAL(10,2) NOT NULL,
+            ganancia DECIMAL(10,2) DEFAULT 0,
+            notas TEXT,
+            fecha DATETIME DEFAULT CURRENT_TIMESTAMP,
+            venta_grupo_id INT DEFAULT NULL,
+            metodo_pago_id INT DEFAULT NULL,
+            pago_referencia VARCHAR(255) DEFAULT '',
+            pago_moneda VARCHAR(10) DEFAULT 'USD',
+            pago_monto DECIMAL(10,2) DEFAULT 0,
+            pagos_json TEXT
+        )
+    """)
+    db.execute("""
+        CREATE TABLE IF NOT EXISTS configuracion (
+            clave VARCHAR(100) PRIMARY KEY,
+            valor TEXT
+        )
+    """)
+    db.execute("""
+        CREATE TABLE IF NOT EXISTS metodos_pago (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            nombre VARCHAR(100) NOT NULL,
+            activo TINYINT DEFAULT 1,
+            orden INT DEFAULT 0,
+            requiere_datos_moviles TINYINT DEFAULT 0,
+            datos_cedula VARCHAR(50) DEFAULT '',
+            datos_banco VARCHAR(100) DEFAULT '',
+            datos_telefono VARCHAR(50) DEFAULT ''
+        )
+    """)
+    db.execute("""
+        CREATE TABLE IF NOT EXISTS proveedores (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            nombre VARCHAR(255) NOT NULL,
+            telefono VARCHAR(50) DEFAULT '',
+            rif_cedula VARCHAR(50) DEFAULT '',
+            direccion TEXT,
+            notas TEXT,
+            activo TINYINT DEFAULT 1,
+            fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    db.commit()
 
-    # ── Migraciones ──
-    cols_prod = [r[1] for r in conn.execute("PRAGMA table_info(productos)").fetchall()]
-    if 'codigo_barras' not in cols_prod:
-        conn.execute("ALTER TABLE productos ADD COLUMN codigo_barras TEXT DEFAULT ''")
-    if 'stock_maximo' not in cols_prod:
-        conn.execute("ALTER TABLE productos ADD COLUMN stock_maximo INTEGER DEFAULT 0")
-    if 'proveedor_id' not in cols_prod:
-        conn.execute("ALTER TABLE productos ADD COLUMN proveedor_id INTEGER")
-    if 'precio_caja' not in cols_prod:
-        conn.execute("ALTER TABLE productos ADD COLUMN precio_caja REAL DEFAULT 0")
-    if 'unidades_por_caja' not in cols_prod:
-        conn.execute("ALTER TABLE productos ADD COLUMN unidades_por_caja INTEGER DEFAULT 0")
-    if 'tipo_medida' not in cols_prod:
-        conn.execute("ALTER TABLE productos ADD COLUMN tipo_medida TEXT DEFAULT 'unidad'")
-
-    cols_venta = [r[1] for r in conn.execute("PRAGMA table_info(ventas)").fetchall()]
-    if 'venta_grupo_id' not in cols_venta:
-        conn.execute("ALTER TABLE ventas ADD COLUMN venta_grupo_id INTEGER DEFAULT 0")
-        ventas = conn.execute("SELECT id FROM ventas ORDER BY id").fetchall()
-        for v in ventas:
-            conn.execute("UPDATE ventas SET venta_grupo_id=? WHERE id=?", (v['id'], v['id']))
-    if 'metodo_pago_id' not in cols_venta:
-        conn.execute("ALTER TABLE ventas ADD COLUMN metodo_pago_id INTEGER")
-    if 'pago_referencia' not in cols_venta:
-        conn.execute("ALTER TABLE ventas ADD COLUMN pago_referencia TEXT DEFAULT ''")
-    if 'pago_moneda' not in cols_venta:
-        conn.execute("ALTER TABLE ventas ADD COLUMN pago_moneda TEXT DEFAULT ''")
-    if 'pago_monto' not in cols_venta:
-        conn.execute("ALTER TABLE ventas ADD COLUMN pago_monto REAL DEFAULT 0")
-    if 'pagos_json' not in cols_venta:
-        conn.execute("ALTER TABLE ventas ADD COLUMN pagos_json TEXT DEFAULT ''")
-    # Columnas de versiones intermedias que ya no se usan por venta (se dejan,
-    # inofensivas, para no romper bases de datos existentes con ALTER DROP):
-    for col in ['pago_cedula', 'pago_banco', 'pago_telefono']:
-        if col not in cols_venta:
-            conn.execute(f"ALTER TABLE ventas ADD COLUMN {col} TEXT DEFAULT ''")
-
-    cols_metodo = [r[1] for r in conn.execute("PRAGMA table_info(metodos_pago)").fetchall()]
-    if cols_metodo and 'requiere_datos_moviles' not in cols_metodo:
-        conn.execute("ALTER TABLE metodos_pago ADD COLUMN requiere_datos_moviles INTEGER DEFAULT 0")
-    for col in ['datos_cedula', 'datos_banco', 'datos_telefono']:
-        if cols_metodo and col not in cols_metodo:
-            conn.execute(f"ALTER TABLE metodos_pago ADD COLUMN {col} TEXT DEFAULT ''")
-
-    conn.commit()
-
-    # Nota: NO hay contraseña de administrador por defecto. app.py expone
-    # /api/configurar-password-inicial para que el dueño la cree él mismo
-    # la primera vez (mínimo 8 caracteres, mayúscula, minúscula y número).
-
-    # ── Métodos de pago por defecto ──
-    if conn.execute("SELECT COUNT(*) FROM metodos_pago").fetchone()[0] == 0:
-        metodos_default = [("Efectivo", 0), ("Punto", 0), ("Pago Móvil", 1), ("Biopago", 0)]
-        for i, (nombre, requiere_moviles) in enumerate(metodos_default):
-            conn.execute(
-                "INSERT INTO metodos_pago (nombre, activo, orden, requiere_datos_moviles) VALUES (?,1,?,?)",
-                (nombre, i, requiere_moviles))
-        conn.commit()
-
-    # No se insertan productos de ejemplo (versión lista para producción).
-    # La base de datos arranca vacía. Agrega tus productos desde Administración.
-    conn.close()
+def close_db(e=None):
+    db = g.pop('db', None)
+    conn = g.pop('_conn', None)
+    if db:
+        db.close()
+    if conn:
+        conn.close()
