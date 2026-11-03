@@ -156,7 +156,7 @@ def configurar_password_inicial():
         error = validar_fortaleza_password(nueva)
         if error:
             return jsonify({'error': error}), 400
-        db.execute("INSERT INTO configuracion (clave,valor) VALUES ('admin_password_hash', ?)",
+        db.execute("INSERT INTO configuracion (clave,valor) VALUES ('admin_password_hash', %s)",
                    (generate_password_hash(nueva),))
         db.commit()
         session['is_admin'] = True
@@ -206,7 +206,7 @@ def cambiar_password():
         error = validar_fortaleza_password(nueva)
         if error:
             return jsonify({'error': error}), 400
-        db.execute("UPDATE configuracion SET valor=? WHERE clave='admin_password_hash'",
+        db.execute("UPDATE configuracion SET valor=%s WHERE clave='admin_password_hash'",
                    (generate_password_hash(nueva),))
         db.commit()
         return jsonify({'ok': True})
@@ -278,7 +278,7 @@ def crear_metodo_pago():
         nombre = dj.get('nombre', '').strip()
         if not nombre:
             return jsonify({'error': 'Nombre requerido'}), 400
-        dup = db.execute("SELECT id FROM metodos_pago WHERE nombre=?", (nombre,)).fetchone()
+        dup = db.execute("SELECT id FROM metodos_pago WHERE nombre=%s", (nombre,)).fetchone()
         if dup:
             return jsonify({'error': 'Ya existe un método de pago con ese nombre'}), 400
         requiere_moviles = 1 if dj.get('requiere_datos_moviles') else 0
@@ -288,7 +288,7 @@ def crear_metodo_pago():
         maxorden = db.execute("SELECT MAX(orden) FROM metodos_pago").fetchone()[0] or 0
         db.execute(
             """INSERT INTO metodos_pago (nombre,activo,orden,requiere_datos_moviles,datos_cedula,datos_banco,datos_telefono)
-               VALUES (?,1,?,?,?,?)""",
+               VALUES (%s,1,%s,%s,%s,%s)""",
             (nombre, maxorden + 1, requiere_moviles, datos_cedula, datos_banco, datos_telefono))
         db.commit()
         return jsonify(dict(db.execute("SELECT * FROM metodos_pago ORDER BY id DESC LIMIT 1").fetchone())), 201
@@ -307,18 +307,18 @@ def actualizar_metodo_pago(mid):
             nombre = d['nombre'].strip()
             if not nombre:
                 return jsonify({'error': 'Nombre requerido'}), 400
-            dup = db.execute("SELECT id FROM metodos_pago WHERE nombre=? AND id!=?", (nombre, mid)).fetchone()
+            dup = db.execute("SELECT id FROM metodos_pago WHERE nombre=%s AND id!=%s", (nombre, mid)).fetchone()
             if dup:
                 return jsonify({'error': 'Ya existe un método de pago con ese nombre'}), 400
-            db.execute("UPDATE metodos_pago SET nombre=? WHERE id=?", (nombre, mid))
+            db.execute("UPDATE metodos_pago SET nombre=%s WHERE id=%s", (nombre, mid))
         if 'activo' in d:
-            db.execute("UPDATE metodos_pago SET activo=? WHERE id=?", (1 if d['activo'] else 0, mid))
+            db.execute("UPDATE metodos_pago SET activo=%s WHERE id=%s", (1 if d['activo'] else 0, mid))
         if 'requiere_datos_moviles' in d:
-            db.execute("UPDATE metodos_pago SET requiere_datos_moviles=? WHERE id=?",
+            db.execute("UPDATE metodos_pago SET requiere_datos_moviles=%s WHERE id=%s",
                        (1 if d['requiere_datos_moviles'] else 0, mid))
         if any(k in d for k in ('datos_cedula', 'datos_banco', 'datos_telefono')):
             db.execute(
-                "UPDATE metodos_pago SET datos_cedula=?, datos_banco=?, datos_telefono=? WHERE id=?",
+                "UPDATE metodos_pago SET datos_cedula=%s, datos_banco=%s, datos_telefono=%s WHERE id=%s",
                 (d.get('datos_cedula', ''), d.get('datos_banco', ''), d.get('datos_telefono', ''), mid)
             )
         db.commit()
@@ -333,12 +333,12 @@ def actualizar_metodo_pago(mid):
 def eliminar_metodo_pago(mid):
     db = get_db()
     try:
-        en_uso = db.execute("SELECT COUNT(*) FROM ventas WHERE metodo_pago_id=?", (mid,)).fetchone()[0]
+        en_uso = db.execute("SELECT COUNT(*) FROM ventas WHERE metodo_pago_id=%s", (mid,)).fetchone()[0]
         if en_uso > 0:
-            db.execute("UPDATE metodos_pago SET activo=0 WHERE id=?", (mid,))
+            db.execute("UPDATE metodos_pago SET activo=0 WHERE id=%s", (mid,))
             db.commit()
             return jsonify({'ok': True, 'desactivado': True})
-        db.execute("DELETE FROM metodos_pago WHERE id=?", (mid,))
+        db.execute("DELETE FROM metodos_pago WHERE id=%s", (mid,))
         db.commit()
         return jsonify({'ok': True, 'desactivado': False})
     except Exception:
@@ -372,7 +372,7 @@ def crear_proveedor():
             return jsonify({'error': 'Nombre del proveedor requerido'}), 400
         db.execute(
             """INSERT INTO proveedores (nombre, telefono, rif_cedula, direccion, notas, activo)
-               VALUES (?,?,?,?,?,1)""",
+               VALUES (%s,%s,%s,%s,%s,1)""",
             (nombre, (d.get('telefono') or '').strip(), (d.get('rif_cedula') or '').strip(),
              (d.get('direccion') or '').strip(), (d.get('notas') or '').strip())
         )
@@ -389,15 +389,15 @@ def actualizar_proveedor(pid):
     db = get_db()
     try:
         d = request.json or {}
-        row = db.execute("SELECT id FROM proveedores WHERE id=?", (pid,)).fetchone()
+        row = db.execute("SELECT id FROM proveedores WHERE id=%s", (pid,)).fetchone()
         if not row:
             return jsonify({'error': 'Proveedor no encontrado'}), 404
         nombre = (d.get('nombre') or '').strip()
         if not nombre:
             return jsonify({'error': 'Nombre requerido'}), 400
         db.execute(
-            """UPDATE proveedores SET nombre=?, telefono=?, rif_cedula=?, direccion=?, notas=?,
-               activo=? WHERE id=?""",
+            """UPDATE proveedores SET nombre=%s, telefono=%s, rif_cedula=%s, direccion=%s, notas=%s,
+               activo=%s WHERE id=%s""",
             (nombre, (d.get('telefono') or '').strip(), (d.get('rif_cedula') or '').strip(),
              (d.get('direccion') or '').strip(), (d.get('notas') or '').strip(),
              1 if d.get('activo', True) else 0, pid)
@@ -415,13 +415,13 @@ def eliminar_proveedor(pid):
     db = get_db()
     try:
         # Si hay productos asociados, solo desactivar
-        en_uso = db.execute("SELECT COUNT(*) FROM productos WHERE proveedor_id=?", (pid,)).fetchone()[0]
+        en_uso = db.execute("SELECT COUNT(*) FROM productos WHERE proveedor_id=%s", (pid,)).fetchone()[0]
         if en_uso > 0:
-            db.execute("UPDATE proveedores SET activo=0 WHERE id=?", (pid,))
+            db.execute("UPDATE proveedores SET activo=0 WHERE id=%s", (pid,))
             db.commit()
             return jsonify({'ok': True, 'desactivado': True,
                             'msg': f'Tiene {en_uso} producto(s). Se desactivó en lugar de borrar.'})
-        db.execute("DELETE FROM proveedores WHERE id=?", (pid,))
+        db.execute("DELETE FROM proveedores WHERE id=%s", (pid,))
         db.commit()
         return jsonify({'ok': True, 'desactivado': False})
     except Exception as e:
@@ -525,7 +525,7 @@ def crear_producto():
             return jsonify({'error': 'Nombre requerido'}), 400
         codigo = (d.get('codigo_barras') or '').strip()
         if codigo:
-            dup = db.execute("SELECT id FROM productos WHERE codigo_barras=?", (codigo,)).fetchone()
+            dup = db.execute("SELECT id FROM productos WHERE codigo_barras=%s", (codigo,)).fetchone()
             if dup:
                 return jsonify({'error': 'Ese código de barras ya está asignado a otro producto'}), 400
         tipo_med = (d.get('tipo_medida') or 'unidad').lower()
@@ -538,7 +538,7 @@ def crear_producto():
         db.execute(
             """INSERT INTO productos (nombre,categoria,precio_compra,precio_venta,stock,stock_minimo,
                stock_maximo,unidad,imagen_url,descripcion,codigo_barras,proveedor_id,tipo_medida)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+               VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
             (nombre, d.get('categoria', 'General'), _to_float(d.get('precio_compra')),
              _to_float(d.get('precio_venta')), _to_float(d.get('stock')), _to_int(d.get('stock_minimo'), 0),
              _to_int(d.get('stock_maximo')), unidad, d.get('imagen_url', ''),
@@ -561,7 +561,7 @@ def actualizar_producto(pid):
         d = request.json or {}
         codigo = (d.get('codigo_barras') or '').strip()
         if codigo:
-            dup = db.execute("SELECT id FROM productos WHERE codigo_barras=? AND id!=?", (codigo, pid)).fetchone()
+            dup = db.execute("SELECT id FROM productos WHERE codigo_barras=%s AND id!=%s", (codigo, pid)).fetchone()
             if dup:
                 return jsonify({'error': 'Ese código de barras ya está asignado a otro producto'}), 400
         tipo_med = (d.get('tipo_medida') or 'unidad').lower()
@@ -574,11 +574,11 @@ def actualizar_producto(pid):
 
         db.execute(
             """UPDATE productos SET
-               nombre=?, categoria=?, precio_compra=?, precio_venta=?, stock=?,
-               stock_minimo=?, stock_maximo=?, unidad=?, imagen_url=?, descripcion=?,
-               codigo_barras=?, proveedor_id=?, tipo_medida=?
+               nombre=%s, categoria=%s, precio_compra=%s, precio_venta=%s, stock=%s,
+               stock_minimo=%s, stock_maximo=%s, unidad=%s, imagen_url=%s, descripcion=%s,
+               codigo_barras=%s, proveedor_id=%s, tipo_medida=%s
                
-               WHERE id=?""",
+               WHERE id=%s""",
             (
                 d.get('nombre', ''),
                 d.get('categoria', 'General'),
@@ -612,13 +612,13 @@ def eliminar_producto(pid):
     db = get_db()
     try:
         # Si el producto tiene ventas, no se puede borrar (FK). Avisamos claramente.
-        en_ventas = db.execute("SELECT COUNT(*) FROM ventas WHERE producto_id=?", (pid,)).fetchone()[0]
+        en_ventas = db.execute("SELECT COUNT(*) FROM ventas WHERE producto_id=%s", (pid,)).fetchone()[0]
         if en_ventas > 0:
             return jsonify({
                 'error': 'No se puede eliminar: este producto ya tiene ventas registradas. '
                          'Puedes poner su stock en 0 o cambiar el nombre si ya no lo usas.'
             }), 400
-        db.execute("DELETE FROM productos WHERE id=?", (pid,))
+        db.execute("DELETE FROM productos WHERE id=%s", (pid,))
         db.commit()
         return jsonify({'ok': True})
     except Exception:
@@ -646,7 +646,7 @@ def producto_por_codigo(codigo):
     db = get_db()
     p = db.execute(
         """SELECT id,nombre,categoria,precio_venta,stock,unidad,imagen_url,codigo_barras
-           FROM productos WHERE codigo_barras=?""", (codigo,)).fetchone()
+           FROM productos WHERE codigo_barras=%s""", (codigo,)).fetchone()
     if not p:
         return jsonify({'error': 'Producto no encontrado', 'codigo': codigo}), 404
     return jsonify(dict(p))
@@ -731,7 +731,7 @@ def registrar_venta():
         pagos_ok = []
         for p in pagos_in:
             mid = p.get('metodo_pago_id')
-            metodo = db.execute("SELECT * FROM metodos_pago WHERE id=? AND activo=1", (mid,)).fetchone()
+            metodo = db.execute("SELECT * FROM metodos_pago WHERE id=%s AND activo=1", (mid,)).fetchone()
             if not metodo:
                 return jsonify({'error': 'Método de pago inválido'}), 400
             nom = (metodo['nombre'] or '').strip().lower()
@@ -782,7 +782,7 @@ def registrar_venta():
 
         productos_info = {}
         for pid, cantidad_total in cantidades_por_producto.items():
-            prod = db.execute("SELECT * FROM productos WHERE id=?", (pid,)).fetchone()
+            prod = db.execute("SELECT * FROM productos WHERE id=%s", (pid,)).fetchone()
             if not prod:
                 return jsonify({'error': f'Producto #{pid} no encontrado'}), 404
             if prod['stock'] < cantidad_total:
@@ -827,12 +827,12 @@ def registrar_venta():
             db.execute(
                 """INSERT INTO ventas (producto_id,cantidad,precio_unitario,total,ganancia,notas,fecha,
                    venta_grupo_id,metodo_pago_id,pago_referencia,pago_moneda,pago_monto,pagos_json)
-                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
                 (pid, cantidad, precio, total, ganancia, notas, fecha, grupo_id, metodo_pago_id,
                  pago_referencia, pago_moneda, pago_monto, pagos_json)
             )
             descuenta = float(item.get("cantidad_stock", cantidad))
-            db.execute("UPDATE productos SET stock=ROUND(stock-?, 4) WHERE id=?", (descuenta, pid))
+            db.execute("UPDATE productos SET stock=ROUND(stock-%s, 4) WHERE id=%s", (descuenta, pid))
             total_general += total
 
         db.commit()
@@ -855,40 +855,40 @@ def editar_venta_grupo(gid):
         nuevo_metodo_pago_id = data.get('metodo_pago_id')
 
         for item in items:
-            row = db.execute("SELECT * FROM ventas WHERE id=? AND venta_grupo_id=?", (item['id'], gid)).fetchone()
+            row = db.execute("SELECT * FROM ventas WHERE id=%s AND venta_grupo_id=%s", (item['id'], gid)).fetchone()
             if not row:
                 continue
-            prod = db.execute("SELECT * FROM productos WHERE id=?", (row['producto_id'],)).fetchone()
+            prod = db.execute("SELECT * FROM productos WHERE id=%s", (row['producto_id'],)).fetchone()
             nueva_cant = float(item.get('cantidad', row['cantidad']))
             diff = nueva_cant - row['cantidad']
             if diff > 0 and prod['stock'] < diff:
                 return jsonify({'error': f'Stock insuficiente para {prod["nombre"]}'}), 400
 
         for vid in eliminar_ids:
-            row = db.execute("SELECT * FROM ventas WHERE id=? AND venta_grupo_id=?", (vid, gid)).fetchone()
+            row = db.execute("SELECT * FROM ventas WHERE id=%s AND venta_grupo_id=%s", (vid, gid)).fetchone()
             if row:
-                db.execute("UPDATE productos SET stock=stock+? WHERE id=?", (row['cantidad'], row['producto_id']))
-                db.execute("DELETE FROM ventas WHERE id=?", (vid,))
+                db.execute("UPDATE productos SET stock=stock+%s WHERE id=%s", (row['cantidad'], row['producto_id']))
+                db.execute("DELETE FROM ventas WHERE id=%s", (vid,))
 
         for item in items:
-            row = db.execute("SELECT * FROM ventas WHERE id=? AND venta_grupo_id=?", (item['id'], gid)).fetchone()
+            row = db.execute("SELECT * FROM ventas WHERE id=%s AND venta_grupo_id=%s", (item['id'], gid)).fetchone()
             if not row:
                 continue
-            prod = db.execute("SELECT * FROM productos WHERE id=?", (row['producto_id'],)).fetchone()
+            prod = db.execute("SELECT * FROM productos WHERE id=%s", (row['producto_id'],)).fetchone()
             nueva_cant = float(item.get('cantidad', row['cantidad']))
             nuevo_prec = float(item.get('precio_unitario', row['precio_unitario']))
             diff = nueva_cant - row['cantidad']
             nuevo_total = nueva_cant * nuevo_prec
             nueva_gan = (nuevo_prec - prod['precio_compra']) * nueva_cant
-            db.execute("UPDATE ventas SET cantidad=?,precio_unitario=?,total=?,ganancia=? WHERE id=?",
+            db.execute("UPDATE ventas SET cantidad=%s,precio_unitario=%s,total=%s,ganancia=%s WHERE id=%s",
                        (nueva_cant, nuevo_prec, nuevo_total, nueva_gan, item['id']))
-            db.execute("UPDATE productos SET stock=stock-? WHERE id=?", (diff, row['producto_id']))
+            db.execute("UPDATE productos SET stock=stock-%s WHERE id=%s", (diff, row['producto_id']))
 
         if nuevo_metodo_pago_id:
-            db.execute("UPDATE ventas SET metodo_pago_id=? WHERE venta_grupo_id=?", (nuevo_metodo_pago_id, gid))
+            db.execute("UPDATE ventas SET metodo_pago_id=%s WHERE venta_grupo_id=%s", (nuevo_metodo_pago_id, gid))
 
         if 'pago_referencia' in data:
-            db.execute("UPDATE ventas SET pago_referencia=? WHERE venta_grupo_id=?",
+            db.execute("UPDATE ventas SET pago_referencia=%s WHERE venta_grupo_id=%s",
                        (data.get('pago_referencia', ''), gid))
 
         db.commit()
@@ -903,10 +903,10 @@ def editar_venta_grupo(gid):
 def eliminar_venta_grupo(gid):
     db = get_db()
     try:
-        rows = db.execute("SELECT * FROM ventas WHERE venta_grupo_id=?", (gid,)).fetchall()
+        rows = db.execute("SELECT * FROM ventas WHERE venta_grupo_id=%s", (gid,)).fetchall()
         for r in rows:
-            db.execute("UPDATE productos SET stock=stock+? WHERE id=?", (r['cantidad'], r['producto_id']))
-        db.execute("DELETE FROM ventas WHERE venta_grupo_id=?", (gid,))
+            db.execute("UPDATE productos SET stock=stock+%s WHERE id=%s", (r['cantidad'], r['producto_id']))
+        db.execute("DELETE FROM ventas WHERE venta_grupo_id=%s", (gid,))
         db.commit()
         return jsonify({'ok': True})
     except Exception:
@@ -924,7 +924,7 @@ def dashboard():
     sb = db.execute("SELECT COUNT(*) FROM productos WHERE stock<=stock_minimo").fetchone()[0]
     so = db.execute("SELECT COUNT(*) FROM productos WHERE stock_maximo > 0 AND stock >= stock_maximo").fetchone()[0]
     vi = db.execute("SELECT SUM(stock*precio_compra) FROM productos").fetchone()[0] or 0
-    vh = db.execute("SELECT COUNT(DISTINCT venta_grupo_id),SUM(total),SUM(ganancia) FROM ventas WHERE DATE(fecha)=?", (hoy,)).fetchone()
+    vh = db.execute("SELECT COUNT(DISTINCT venta_grupo_id),SUM(total),SUM(ganancia) FROM ventas WHERE DATE(fecha)=%s", (hoy,)).fetchone()
     vm = db.execute("SELECT COUNT(DISTINCT venta_grupo_id),SUM(total),SUM(ganancia) FROM ventas WHERE strftime('%Y-%m',fecha)=strftime('%Y-%m','now')").fetchone()
     top = db.execute("SELECT p.nombre,p.imagen_url,SUM(v.cantidad) as tv,SUM(v.total) as ing FROM ventas v JOIN productos p ON v.producto_id=p.id GROUP BY p.id ORDER BY tv DESC LIMIT 5").fetchall()
     v7 = db.execute("SELECT DATE(fecha) as dia,SUM(total) as total,SUM(ganancia) as ganancia FROM ventas WHERE fecha>=datetime('now','-7 days') GROUP BY dia ORDER BY dia").fetchall()
