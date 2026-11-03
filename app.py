@@ -677,8 +677,8 @@ def get_ventas():
            FROM ventas v JOIN productos p ON v.producto_id=p.id
            LEFT JOIN metodos_pago m ON v.metodo_pago_id=m.id WHERE 1=1"""
     params = []
-    if fi: q += " AND DATE(v.fecha)>=?"; params.append(fi)
-    if ff: q += " AND DATE(v.fecha)<=?"; params.append(ff)
+    if fi: q += " AND DATE(v.fecha)>=%s"; params.append(fi)
+    if ff: q += " AND DATE(v.fecha)<=%s"; params.append(ff)
     q += " ORDER BY v.venta_grupo_id DESC, v.id ASC"
     rows = db.execute(q, params).fetchall()
 
