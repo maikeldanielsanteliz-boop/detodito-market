@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{ nombre_tienda }}</title>
+<script>
+  (function(){ try { document.documentElement.setAttribute('data-theme', localStorage.getItem('detodito_tema') || 'dark'); } catch(e) {} })();
+</script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+<script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+</head>
+<body>
+
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-icon">🛒</div>
+    <div class="logo-text"><span class="logo-main">DE TODITO</span><span class="logo-sub">MARKET MyF, C.A</span></div>
+  </div>
+
+  <nav class="sidebar-nav">
+    <div class="nav-section-label">VENTAS</div>
+    <a href="#" class="nav-item active" data-page="facturacion"><i class="fas fa-cash-register"></i><span>Facturación</span><div class="nav-indicator"></div></a>
+    <div class="nav-section-label">ADMINISTRACIÓN</div>
+    <a href="#" class="nav-item nav-admin" data-page="dashboard"><i class="fas fa-chart-pie"></i><span>Dashboard</span><i class="fas fa-lock nav-lock"></i><div class="nav-indicator"></div></a>
+    <a href="#" class="nav-item nav-admin" data-page="inventario"><i class="fas fa-boxes-stacked"></i><span>Inventario</span><i class="fas fa-lock nav-lock"></i><div class="nav-indicator"></div></a>
+    <a href="#" class="nav-item nav-admin" data-page="ventas"><i class="fas fa-receipt"></i><span>Historial Ventas</span><i class="fas fa-lock nav-lock"></i><div class="nav-indicator"></div></a>
+    <a href="#" class="nav-item nav-admin" data-page="metodos-pago"><i class="fas fa-credit-card"></i><span>Métodos de Pago</span><i class="fas fa-lock nav-lock"></i><div class="nav-indicator"></div></a>
+    <a href="#" class="nav-item nav-admin" data-page="proveedores"><i class="fas fa-truck"></i><span>Proveedores</span><i class="fas fa-lock nav-lock"></i><div class="nav-indicator"></div></a>
+    <a href="#" class="nav-item nav-admin" data-page="reportes"><i class="fas fa-file-excel"></i><span>Exportar</span><i class="fas fa-lock nav-lock"></i><div class="nav-indicator"></div></a>
+  </nav>
+
+  <div class="conversor-widget">
+    <div class="conversor-title"><i class="fas fa-dollar-sign"></i> Conversor USD / Bs</div>
+    <div class="tasa-display" id="tasa-display">Cargando...</div>
+    <div class="conversor-inputs">
+      <div class="conv-row"><span class="conv-label">$</span><input class="conv-input" type="number" id="conv-usd" placeholder="0.00" oninput="convertirUSD()"></div>
+      <div class="conv-row"><span class="conv-label">Bs</span><input class="conv-input" type="number" id="conv-bs" placeholder="0.00" oninput="convertirBS()"></div>
+    </div>
+    <button class="btn-tasa-manual" onclick="abrirTasaManual()"><i class="fas fa-edit"></i> Ingresar tasa manualmente</button>
+  </div>
+
+  <div class="admin-session-box" id="admin-session-box"></div>
+
+  <div class="sidebar-footer">
+    <div class="sidebar-clock" id="reloj">--:--</div>
+    <div class="sidebar-date" id="fecha-sidebar">---</div>
+  </div>
+</aside>
+
+<main class="main-content">
+  <header class="topbar">
+    <button class="topbar-toggle" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
+    <div class="topbar-title" id="topbar-title">Facturación</div>
+    <div class="topbar-actions">
+      <button onclick="actualizarTodo()" title="Actualizar" style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:8px 12px;color:var(--ts);cursor:pointer;margin-right:8px"><i class="fas fa-sync-alt"></i></button>
+      <div class="search-box" id="topbar-search-box"><i class="fas fa-search"></i><input type="text" placeholder="Buscar producto..." id="global-search"></div>
+      <button class="theme-toggle" onclick="alternarTema()" title="Cambiar tema"><i class="fas fa-sun" id="theme-icon"></i></button>
+      <div class="notif-badge" id="notif-badge" onclick="mostrarStockBajo()" title="Stock bajo"><i class="fas fa-bell"></i><span class="badge-count hidden" id="badge-count">0</span></div>
+    </div>
+  </header>
+
+  <!-- FACTURACIÓN -->
+  <div id="page-facturacion" class="page active">
+    <div class="page-header"><div><h2>Facturación</h2><p class="page-subtitle">DE TODITO MARKET MyF, C.A</p></div></div>
+    <div class="pos-layout">
+      <div class="pos-scan-box">
+        <label><i class="fas fa-barcode"></i> Código de Barras
+          <button type="button" class="btn-help-scan" onclick="abrirModal('modal-como-escanear')"><i class="fas fa-circle-question"></i> ¿Cómo escaneo?</button>
+        </label>
+        <div class="barcode-input-row">
+          <input type="text" id="pos-barcode-input" placeholder="Pasa el lector USB aquí o escribe el código + Enter" autocomplete="off">
+          <button type="button" class="btn-secondary btn-sm btn-camara" onclick="abrirScannerCamara(posBuscarPorCodigo)" title="Cámara de esta PC"><i class="fas fa-camera"></i></button>
+        </div>
+        <div class="pos-scan-hint">Lector USB (Roccia), cámara 📷 o escribir a mano + Enter</div>
+      </div>
+      <div class="pos-search-box">
+        <label><i class="fas fa-search"></i> Buscar producto por nombre</label>
+        <select id="pos-select-prod"><option value="">— Buscar producto —</option></select>
+        <div class="pos-search-row"><input type="number" id="pos-cantidad" value="1" min="0.01" step="0.01" placeholder="Cant."><button class="btn-primary" onclick="posAgregarSeleccionado()"><i class="fas fa-plus"></i> Agregar</button></div>
+      </div>
+    </div>
+
+    <div class="carrito-tabla-wrap" style="margin-top:16px">
+      <table class="carrito-tabla">
+        <thead><tr><th>Producto</th><th>Cant.</th><th>Precio $</th><th>Subtotal $</th><th>Subtotal Bs</th><th></th></tr></thead>
+        <tbody id="pos-carrito-tbody"><tr id="pos-empty-row"><td colspan="6" class="carrito-vacio"><i class="fas fa-barcode"></i>Escanea o busca un producto para comenzar la venta</td></tr></tbody>
+      </table>
+    </div>
+    <div class="carrito-total" id="pos-total-box" style="display:none">
+      <div>
+        <div class="carrito-total-usd" id="pos-total-usd"></div>
+        <div class="carrito-total-bs" id="pos-total-bs"></div>
+      </div>
+      <button type="button" class="btn-accent" id="btn-ir-pagar" onclick="irAPagar()" style="display:none">
+        <i class="fas fa-cash-register"></i> Pagar
+      </button>
+    </div>
+
+    <!-- PASO 2: PAGO (oculto hasta que toquen Pagar) -->
+    <div id="pos-paso-pago" class="pos-paso-pago" style="display:none">
+      <div class="pos-pago-header">
+        <button type="button" class="btn-secondary btn-sm" onclick="volverAlCarrito()"><i class="fas fa-arrow-left"></i> Volver al carrito</button>
+        <div class="pos-pago-total-big">
+          <span>A cobrar</span>
+          <strong id="pos-pago-total-usd">$0.00</strong>
+          <small id="pos-pago-total-bs"></small>
+        </div>
+      </div>
+
+      <div class="pos-metodo-pago">
+        <label><i class="fas fa-credit-card"></i> Forma de pago *</label>
+        <label class="pos-check-line" style="display:flex;align-items:center;gap:8px;margin:8px 0;font-size:13px;cursor:pointer;text-transform:none;letter-spacing:0;font-weight:500">
+          <input type="checkbox" id="pos-pago-en-partes" onchange="togglePagoEnPartes()">
+          <span>Pago en partes</span>
+        </label>
+        <div class="metodo-pago-botones" id="pos-metodo-botones"></div>
+        <div id="pos-metodo-extra"></div>
+        <div id="pos-pagos-lista" class="pos-pagos-lista"></div>
+        <div id="pos-pagos-resumen" class="pos-pagos-resumen" style="display:none"></div>
+        <button type="button" class="btn-secondary btn-sm" id="btn-add-pago" onclick="agregarPagoActual()" style="margin-top:8px;display:none">
+          <i class="fas fa-plus"></i> Agregar este pago a la venta
+        </button>
+        <label class="pos-check-line" id="pos-pago-confirm-wrap" style="display:none;align-items:center;gap:8px;margin-top:12px;font-size:13px;cursor:pointer;padding:10px;border:1px solid var(--border);border-radius:8px;background:var(--bg3);text-transform:none;letter-spacing:0;font-weight:500">
+          <input type="checkbox" id="pos-pago-confirmado">
+          <span><strong>Confirmo el pago</strong> — monto y referencia correctos</span>
+        </label>
+      </div>
+
+      <div class="pos-footer">
+        <input type="text" id="pos-notas" placeholder="Notas de la venta (opcional)">
+        <button class="btn-accent" id="btn-cobrar" onclick="posConfirmarVenta()"><i class="fas fa-check-circle"></i> Confirmar Venta</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="page-dashboard" class="page"></div>
+
+  <div id="page-inventario" class="page">
+    <div class="page-header"><div><h2>Inventario</h2><p class="page-subtitle">Gestiona todos tus productos</p></div>
+      <button class="btn-primary" onclick="abrirModalProducto()"><i class="fas fa-plus"></i> Nuevo Producto</button></div>
+    <div class="filtros-bar">
+      <div class="filtro-search"><i class="fas fa-search"></i><input type="text" id="inv-search" placeholder="Buscar..." oninput="filtrarInventario()"></div>
+      <select id="inv-categoria" onchange="filtrarInventario()"><option value="">Todas las categorías</option></select>
+      <div class="filtro-info" id="filtro-info"></div>
+    </div>
+    <div class="productos-grid" id="productos-grid"></div>
+  </div>
+
+  <div id="page-ventas" class="page">
+    <div class="page-header"><div><h2>Historial de Ventas</h2><p class="page-subtitle">Consulta, edita o anula ventas pasadas</p></div>
+      <button class="btn-primary" onclick="irAFacturacion()"><i class="fas fa-cash-register"></i> Ir a Facturación</button></div>
+    <div class="filtros-bar">
+      <div class="filtro-fecha"><label>Desde:</label><input type="date" id="v-fecha-ini"></div>
+      <div class="filtro-fecha"><label>Hasta:</label><input type="date" id="v-fecha-fin"></div>
+      <button class="btn-secondary" onclick="cargarVentas()"><i class="fas fa-filter"></i> Filtrar</button>
+      <button class="btn-secondary" onclick="limpiarFiltrosVentas()"><i class="fas fa-times"></i> Limpiar</button>
+    </div>
+    <div class="ventas-stats" id="ventas-stats"></div>
+    <div id="ventas-lista"></div>
+  </div>
+
+  <div id="page-metodos-pago" class="page">
+    <div class="page-header"><div><h2>Métodos de Pago</h2><p class="page-subtitle">Para "Pago Móvil", configura aquí TUS datos (cédula, banco, teléfono) — se los das al cliente, no se piden en cada venta</p></div>
+      <button class="btn-primary" onclick="abrirModalMetodoPago()"><i class="fas fa-plus"></i> Nuevo Método</button></div>
+    <div id="metodos-pago-lista" class="metodos-pago-grid"></div>
+  </div>
+
+  <div id="page-proveedores" class="page">
+    <div class="page-header"><div><h2>Proveedores</h2><p class="page-subtitle">A quién le compras — nombre, teléfono y datos de contacto</p></div>
+      <button class="btn-primary" onclick="abrirModalProveedor()"><i class="fas fa-plus"></i> Nuevo Proveedor</button></div>
+    <div id="proveedores-lista" class="metodos-pago-grid"></div>
+  </div>
+
+  <div id="page-reportes" class="page">
+    <div class="page-header"><div><h2>Exportar Reportes</h2><p class="page-subtitle">Excel detallado o PDF resumen — precios en $ y Bs</p></div></div>
+    <div class="reportes-grid">
+      <div class="reporte-card"><div class="reporte-icon"><i class="fas fa-calendar-day"></i></div><h3>Reporte Diario</h3><p>Ventas e inventario de hoy</p>
+        <div class="reporte-btn-row"><button class="btn-primary btn-sm" onclick="exportarHoy('excel')"><i class="fas fa-file-excel"></i> Excel</button><button class="btn-secondary btn-sm" onclick="exportarHoy('pdf')"><i class="fas fa-file-pdf"></i> PDF</button></div></div>
+      <div class="reporte-card"><div class="reporte-icon"><i class="fas fa-calendar-week"></i></div><h3>Reporte Mensual</h3><p>Análisis del mes en curso</p>
+        <div class="reporte-btn-row"><button class="btn-primary btn-sm" onclick="exportarMes('excel')"><i class="fas fa-file-excel"></i> Excel</button><button class="btn-secondary btn-sm" onclick="exportarMes('pdf')"><i class="fas fa-file-pdf"></i> PDF</button></div></div>
+      <div class="reporte-card featured"><div class="reporte-icon"><i class="fas fa-sliders"></i></div><h3>Rango Personalizado</h3><p>Define tu propio período</p>
+        <div class="reporte-fechas"><div><label>Inicio</label><input type="date" id="r-fecha-ini"></div><div><label>Fin</label><input type="date" id="r-fecha-fin"></div></div>
+        <div class="reporte-btn-row" style="width:100%"><button class="btn-accent" onclick="exportarPersonalizado('excel')"><i class="fas fa-file-excel"></i> Excel</button><button class="btn-accent btn-accent-alt" onclick="exportarPersonalizado('pdf')"><i class="fas fa-file-pdf"></i> PDF</button></div></div>
+    </div>
+  </div>
+</main>
+
+<!-- MODAL CONFIGURAR CONTRASEÑA INICIAL -->
+<div class="modal-overlay" id="modal-configurar-password">
+  <div class="modal modal-sm">
+    <div class="modal-header"><h3><i class="fas fa-shield-halved"></i> Configura tu Contraseña</h3>
+      <button class="modal-close" onclick="cerrarModal('modal-configurar-password')"><i class="fas fa-times"></i></button></div>
+    <div class="modal-body">
+      <p style="font-size:12.5px;color:var(--ts);margin-bottom:12px">Esta será tu contraseña para entrar a Administración. Elige una segura — tú la escribes, el sistema no te deja continuar si no cumple:</p>
+      <div class="form-group"><label>Nueva Contraseña</label><input type="password" id="setup-password-input" oninput="actualizarReglasPassword(this.value,'setup')" placeholder="Mínimo 8 caracteres"></div>
+      <div class="form-group"><label>Confirmar Contraseña</label><input type="password" id="setup-password-confirm"></div>
+      <div class="password-reglas">
+        <div class="regla" id="setup-regla-largo"><i class="fas fa-circle"></i> Al menos 8 caracteres</div>
+        <div class="regla" id="setup-regla-mayuscula"><i class="fas fa-circle"></i> Una letra mayúscula</div>
+        <div class="regla" id="setup-regla-minuscula"><i class="fas fa-circle"></i> Una letra minúscula</div>
+        <div class="regla" id="setup-regla-numero"><i class="fas fa-circle"></i> Un número</div>
+      </div>
+      <div id="setup-error" class="login-error" style="display:none"></div>
+    </div>
+    <div class="modal-footer"><button class="btn-primary" style="width:100%" onclick="guardarPasswordInicial()"><i class="fas fa-check"></i> Guardar y Entrar</button></div>
+  </div>
+</div>
+
+<!-- MODAL LOGIN -->
+<div class="modal-overlay" id="modal-login">
+  <div class="modal modal-sm">
+    <div class="modal-header"><h3><i class="fas fa-user-shield"></i> Acceso Administrador</h3><button class="modal-close" onclick="cerrarModal('modal-login')"><i class="fas fa-times"></i></button></div>
+    <div class="modal-body"><div class="form-group"><label>Contraseña</label><input type="password" id="login-password-input" placeholder="••••••••"></div><div id="login-error" class="login-error" style="display:none"></div></div>
+    <div class="modal-footer"><button class="btn-secondary" onclick="cerrarModal('modal-login')">Cancelar</button><button class="btn-primary" onclick="intentarLogin()"><i class="fas fa-sign-in-alt"></i> Ingresar</button></div>
+  </div>
+</div>
+
+<!-- MODAL CAMBIAR CONTRASEÑA -->
+<div class="modal-overlay" id="modal-cambiar-password">
+  <div class="modal modal-sm">
+    <div class="modal-header"><h3><i class="fas fa-key"></i> Cambiar Contraseña</h3><button class="modal-close" onclick="cerrarModal('modal-cambiar-password')"><i class="fas fa-times"></i></button></div>
+    <div class="modal-body">
+      <div class="form-group"><label>Contraseña Actual</label><input type="password" id="cp-actual"></div>
+      <div class="form-group"><label>Nueva Contraseña</label><input type="password" id="cp-nueva" oninput="actualizarReglasPassword(this.value,'cp')"></div>
+      <div class="password-reglas">
+        <div class="regla" id="cp-regla-largo"><i class="fas fa-circle"></i> Al menos 8 caracteres</div>
+        <div class="regla" id="cp-regla-mayuscula"><i class="fas fa-circle"></i> Una letra mayúscula</div>
+        <div class="regla" id="cp-regla-minuscula"><i class="fas fa-circle"></i> Una letra minúscula</div>
+        <div class="regla" id="cp-regla-numero"><i class="fas fa-circle"></i> Un número</div>
+      </div>
+      <div id="cp-error" class="login-error" style="display:none"></div>
+    </div>
+    <div class="modal-footer"><button class="btn-secondary" onclick="cerrarModal('modal-cambiar-password')">Cancelar</button><button class="btn-primary" onclick="guardarNuevaPassword()"><i class="fas fa-save"></i> Guardar</button></div>
+  </div>
+</div>
+
+<!-- MODAL PRODUCTO -->
+<div class="modal-overlay" id="modal-producto">
+  <div class="modal">
+    <div class="modal-header"><h3 id="modal-prod-titulo">Nuevo Producto</h3><button class="modal-close" onclick="cerrarModal('modal-producto')"><i class="fas fa-times"></i></button></div>
+    <div class="modal-body">
+      <input type="hidden" id="prod-id">
+      <div class="form-imagen-section">
+        <label><i class="fas fa-image"></i>&nbsp; Imagen del Producto</label>
+        <div class="form-imagen-row">
+          <img id="prod-img-preview" src="" onerror="this.src='https://via.placeholder.com/76x76/1a1d30/6c63ff?text=📦'" alt="">
+          <div class="form-imagen-opciones">
+            <label class="upload-btn" for="input-file-hidden"><i class="fas fa-upload"></i><span id="upload-label-txt">Subir foto desde la PC</span></label>
+            <input type="file" id="input-file-hidden" accept="image/*" onchange="cargarImagenLocal(event)">
+            <button type="button" class="upload-btn" style="margin-top:6px;width:100%;cursor:pointer" onclick="abrirCamaraFotoProducto()">
+              <i class="fas fa-camera"></i><span>Tomar foto con la cámara</span>
+            </button>
+            <button type="button" class="btn-secondary btn-sm" id="btn-borrar-foto" onclick="borrarFotoProducto()" style="margin-top:6px;display:none;width:100%">
+              <i class="fas fa-trash"></i> Borrar foto
+            </button>
+            <input type="hidden" id="prod-img-url" value="">
+          </div>
+        </div>
+      </div>
+      <div class="form-grid">
+        <div class="form-group span2"><label>Nombre del Producto *</label><input type="text" id="prod-nombre" placeholder="Ej: Papel de Baño, Azúcar..."></div>
+        <div class="form-group span2">
+          <label><i class="fas fa-barcode"></i> Código de Barras (opcional)</label>
+          <div class="barcode-input-row">
+            <input type="text" id="prod-codigo-barras" placeholder="Escanea o escríbelo aquí" autocomplete="off">
+            <button type="button" class="btn-secondary btn-sm btn-camara" onclick="abrirScannerCamara(codigoEscaneadoParaProducto)" title="Cámara de esta PC"><i class="fas fa-camera"></i></button>
+            <button type="button" class="btn-secondary btn-sm" id="btn-buscar-info-codigo" onclick="buscarInfoPorCodigo()"><i class="fas fa-magnifying-glass"></i> Buscar info</button>
+          </div>
+          <div class="precio-bs-hint" style="color:var(--tm)">Intenta autocompletar nombre y foto usando una base pública de códigos</div>
+        </div>
+        <div class="form-group"><label>Categoría</label><input type="text" id="prod-categoria" placeholder="Ej: Charcutería, Abarrotes..." list="lista-categorias" oninput="onCategoriaChange()"><datalist id="lista-categorias"></datalist></div>
+        <div class="form-group"><label>Tipo de medida *</label>
+          <select id="prod-tipo-medida" onchange="actualizarUnidadesPorTipo(); actualizarCamposStock()">
+            <option value="unidad">Por unidad / empaque</option>
+            <option value="peso">Peso (kg / g) — víveres, granos</option>
+            <option value="liquido">Líquido (litro / ml)</option>
+            <option value="largo">Largo (metro)</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Unidad *</label><select id="prod-unidad"></select>
+          <div class="precio-bs-hint" id="hint-unidad">Peso = kg/g (rebanado). Unidad = pieza entera.</div>
+        </div>
+        <div class="form-group"><label>Proveedor</label>
+          <select id="prod-proveedor"><option value="">— Sin proveedor —</option></select>
+        </div>
+        <div class="form-group"><label>Precio Compra ($)</label><input type="number" id="prod-precio-compra" placeholder="0.00" step="0.01" min="0" oninput="actualizarHintsBs()"><div class="precio-bs-hint" id="hint-compra"></div></div>
+        <div class="form-group"><label>Precio Venta ($)</label><input type="number" id="prod-precio-venta" placeholder="0.00" step="0.01" min="0" oninput="actualizarHintsBs()"><div class="precio-bs-hint" id="hint-venta"></div></div>
+        <div class="form-group span2">
+          <label style="display:flex;align-items:center;gap:8px;margin:4px 0;font-size:13px;cursor:pointer;text-transform:none;letter-spacing:0;font-weight:500">
+            <input type="checkbox" id="prod-vende-caja" onchange="toggleCamposCaja()">
+            <span>Vender también por caja</span>
+          </label>
+        </div>
+        <div id="campos-caja" style="display:none;grid-column:1/-1">
+          <div class="form-grid" style="margin-top:0">
+            <div class="form-group"><label>Precio por Caja ($)</label><input type="number" id="prod-precio-caja" placeholder="0.00" step="0.01" min="0"></div>
+            <div class="form-group"><label>Unidades por Caja</label><input type="number" id="prod-unidades-caja" placeholder="Ej: 10" min="1"></div>
+          </div>
+        </div>
+        <div class="form-group" id="grupo-stock-simple"><label>Stock Actual</label><input type="number" id="prod-stock" placeholder="0" min="0" step="0.01"></div>
+        <div class="form-group span2" id="grupo-stock-peso" style="display:none">
+          <label>Stock en peso</label>
+          <div style="display:flex;gap:10px">
+            <div style="flex:1"><label style="font-size:11px;color:var(--tm)">Kilogramos</label><input type="number" id="prod-stock-kg" placeholder="0" min="0" oninput="syncStockDesdeKgG()" style="width:100%"></div>
+            <div style="flex:1"><label style="font-size:11px;color:var(--tm)">Gramos</label><input type="number" id="prod-stock-g" placeholder="0" min="0" max="999" oninput="syncStockDesdeKgG()" style="width:100%"></div>
+          </div>
+          <div class="precio-bs-hint" id="hint-stock-peso">Total: 0 kg</div>
+        </div>
+        <div class="form-group"><label>Stock Mínimo</label><input type="number" id="prod-stock-min" placeholder="5" min="0"></div>
+        <div class="form-group"><label>Stock Máximo</label><input type="number" id="prod-stock-max" placeholder="0 = sin límite" min="0" title="0 = sin límite de máximo"></div>
+        <div class="form-group span2"><label>Descripción</label><textarea id="prod-descripcion" rows="2" placeholder="Descripción opcional..."></textarea></div>
+      </div>
+    </div>
+    <div class="modal-footer"><button class="btn-secondary" onclick="cerrarModal('modal-producto')">Cancelar</button><button class="btn-primary" onclick="guardarProducto()"><i class="fas fa-save"></i> Guardar</button></div>
+  </div>
+</div>
+
+
+<!-- MODAL PROVEEDOR -->
+<div class="modal-overlay" id="modal-proveedor">
+  <div class="modal">
+    <div class="modal-header"><h3 id="modal-prov-titulo">Nuevo Proveedor</h3><button class="modal-close" onclick="cerrarModal('modal-proveedor')"><i class="fas fa-times"></i></button></div>
+    <div class="modal-body">
+      <input type="hidden" id="prov-id">
+      <div class="form-group"><label>Nombre *</label><input type="text" id="prov-nombre" placeholder="Ej: Distribuidora Los Andes"></div>
+      <div class="form-group"><label>Teléfono</label><input type="text" id="prov-telefono" placeholder="0412-1234567"></div>
+      <div class="form-group"><label>RIF / Cédula</label><input type="text" id="prov-rif" placeholder="J-12345678-9"></div>
+      <div class="form-group"><label>Dirección</label><input type="text" id="prov-direccion" placeholder="Opcional"></div>
+      <div class="form-group"><label>Notas</label><textarea id="prov-notas" rows="2" placeholder="Horarios, condiciones, etc."></textarea></div>
+    </div>
+    <div class="modal-footer"><button class="btn-secondary" onclick="cerrarModal('modal-proveedor')">Cancelar</button><button class="btn-primary" onclick="guardarProveedor()"><i class="fas fa-save"></i> Guardar</button></div>
+  </div>
+</div>
+<!-- MODAL EDITAR VENTA -->
+<div class="modal-overlay" id="modal-editar-venta">
+  <div class="modal modal-lg">
+    <div class="modal-header"><h3 id="modal-editar-titulo">Editar Venta</h3><button class="modal-close" onclick="cerrarModal('modal-editar-venta')"><i class="fas fa-times"></i></button></div>
+    <div class="modal-body">
+      <input type="hidden" id="edit-grupo-id">
+      <p style="color:var(--ts);font-size:12px;margin-bottom:12px"><i class="fas fa-info-circle"></i> Cambia cantidad, precio, o quita un producto con el ✕. Para eliminar toda la venta, usa la basura en la lista.</p>
+      <div class="carrito-tabla-wrap">
+        <table class="carrito-tabla"><thead><tr><th>Producto</th><th>Cantidad</th><th>Precio $</th><th>Subtotal $</th><th>Subtotal Bs</th><th></th></tr></thead><tbody id="edit-tbody"></tbody></table>
+      </div>
+      <div class="carrito-total" id="edit-total-box" style="display:none;margin-top:10px"><div class="carrito-total-usd" id="edit-total-usd"></div><div class="carrito-total-bs" id="edit-total-bs"></div></div>
+      <div class="form-group" style="margin-top:12px"><label><i class="fas fa-credit-card"></i> Método de Pago</label><select id="edit-metodo-pago" onchange="toggleEditMetodoExtra()"></select></div>
+      <div class="form-group" id="edit-referencia-wrap" style="margin-top:10px"><label>Referencia</label><input type="text" id="edit-pago-referencia" placeholder="Número de referencia"></div>
+    </div>
+    <div class="modal-footer"><button class="btn-secondary" onclick="cerrarModal('modal-editar-venta')">Cancelar</button><button class="btn-primary" onclick="guardarEdicionVenta()"><i class="fas fa-save"></i> Guardar Cambios</button></div>
+  </div>
+</div>
+
+<!-- MODAL MÉTODO DE PAGO -->
+<div class="modal-overlay" id="modal-metodo-pago">
+  <div class="modal modal-sm">
+    <div class="modal-header"><h3 id="modal-metodo-titulo">Nuevo Método de Pago</h3><button class="modal-close" onclick="cerrarModal('modal-metodo-pago')"><i class="fas fa-times"></i></button></div>
+    <div class="modal-body">
+      <input type="hidden" id="metodo-id">
+      <div class="form-group"><label>Nombre</label><input type="text" id="metodo-nombre" placeholder="Ej: Zelle, Transferencia..."></div>
+      <div class="metodo-checkbox-row"><input type="checkbox" id="metodo-requiere-moviles" onchange="toggleMetodoDatosFijos()"><label for="metodo-requiere-moviles">Requiere referencia del cliente (como Pago Móvil)</label></div>
+      <div id="metodo-datos-fijos" style="display:none">
+        <p class="metodo-datos-hint">Tus propios datos — se los das al cliente para que te transfiera. Se guardan aquí una sola vez:</p>
+        <div class="form-group"><label>Tu Cédula</label><input type="text" id="metodo-datos-cedula" placeholder="V-12345678"></div>
+        <div class="form-group"><label>Tu Banco</label><input type="text" id="metodo-datos-banco" placeholder="Ej: Banesco"></div>
+        <div class="form-group"><label>Tu Teléfono</label><input type="text" id="metodo-datos-telefono" placeholder="0412-1234567"></div>
+      </div>
+    </div>
+    <div class="modal-footer"><button class="btn-secondary" onclick="cerrarModal('modal-metodo-pago')">Cancelar</button><button class="btn-primary" onclick="guardarMetodoPago()"><i class="fas fa-save"></i> Guardar</button></div>
+  </div>
+</div>
+
+<!-- MODAL TASA -->
+<div class="modal-overlay" id="modal-tasa">
+  <div class="modal modal-sm">
+    <div class="modal-header"><h3>Tasa del Dólar</h3><button class="modal-close" onclick="cerrarModal('modal-tasa')"><i class="fas fa-times"></i></button></div>
+    <div class="modal-body"><p style="color:var(--ts);font-size:13px;margin-bottom:12px">¿Cuántos bolívares equivalen a 1 dólar hoy?</p><div class="form-group"><label>1 USD = ___ Bs</label><input type="number" id="tasa-manual-input" placeholder="Ej: 36.50" step="0.01" min="0"></div></div>
+    <div class="modal-footer"><button class="btn-secondary" onclick="cerrarModal('modal-tasa')">Cancelar</button><button class="btn-primary" onclick="guardarTasaManual()"><i class="fas fa-check"></i> Aplicar</button></div>
+  </div>
+</div>
+
+<!-- MODAL CÓMO ESCANEAR -->
+<div class="modal-overlay" id="modal-como-escanear">
+  <div class="modal">
+    <div class="modal-header"><h3><i class="fas fa-barcode"></i> ¿Cómo escaneo un código?</h3><button class="modal-close" onclick="cerrarModal('modal-como-escanear')"><i class="fas fa-times"></i></button></div>
+    <div class="modal-body">
+      <div class="aviso-importante"><i class="fas fa-camera"></i><span><strong>Cámara de esta PC (sin apps, gratis):</strong> si esta computadora tiene webcam, el botón 📷 la activa. Solo funciona abriendo el programa EN esta PC, no desde el celular por WiFi (restricción de seguridad del navegador).</span></div>
+      <div class="pasos-escaneo">
+        <div class="paso-escaneo"><div class="paso-num">1</div><div class="paso-texto"><strong>App en tu celular:</strong> instala "Barcode to PC: Wi-Fi scanner" (iPhone/Android)</div></div>
+        <div class="paso-escaneo"><div class="paso-num">2</div><div class="paso-texto">En esta PC, instala el programa gratis desde <strong>barcodetopc.com</strong></div></div>
+        <div class="paso-escaneo"><div class="paso-num">3</div><div class="paso-texto">Misma WiFi en celular y PC — se emparejan solos</div></div>
+        <div class="paso-escaneo"><div class="paso-num">4</div><div class="paso-texto">Clic en el cuadro de código aquí, luego escanea desde el celular — el código aparece solo</div></div>
+      </div>
+      <div class="alt-sin-app"><i class="fas fa-keyboard"></i><span><strong>A mano:</strong> escribe el número bajo las rayas del código y Enter.</span></div>
+    </div>
+    <div class="modal-footer"><button class="btn-primary" onclick="cerrarModal('modal-como-escanear')"><i class="fas fa-check"></i> Entendido</button></div>
+  </div>
+</div>
+
+<!-- MODAL CÁMARA -->
+
+<!-- MODAL CÁMARA FOTO PRODUCTO -->
+<div class="modal-overlay" id="modal-foto-producto">
+  <div class="modal">
+    <div class="modal-header"><h3><i class="fas fa-camera"></i> Tomar foto del producto</h3>
+      <button class="modal-close" onclick="cerrarCamaraFotoProducto()"><i class="fas fa-times"></i></button></div>
+    <div class="modal-body" style="text-align:center">
+      <video id="foto-prod-video" autoplay playsinline style="width:100%;max-height:320px;border-radius:10px;background:#000"></video>
+      <canvas id="foto-prod-canvas" style="display:none"></canvas>
+      <p class="scanner-hint" style="margin-top:8px"><i class="fas fa-circle-info"></i> Permite el acceso a la cámara y pulsa Capturar</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="cerrarCamaraFotoProducto()">Cancelar</button>
+      <button class="btn-primary" onclick="capturarFotoProducto()"><i class="fas fa-camera"></i> Capturar</button>
+    </div>
+  </div>
+</div>
+<div class="modal-overlay" id="modal-scanner-camara">
+  <div class="modal modal-sm">
+    <div class="modal-header"><h3><i class="fas fa-camera"></i> Cámara de esta PC</h3><button class="modal-close" onclick="cerrarScannerCamara()"><i class="fas fa-times"></i></button></div>
+    <div class="modal-body"><div id="camara-reader"></div><p class="scanner-hint"><i class="fas fa-circle-info"></i> Apunta al código. Si no ves imagen, revisa permiso de cámara y que esta PC tenga una.</p></div>
+  </div>
+</div>
+
+<!-- MODAL CONFIRMAR -->
+<div class="modal-overlay" id="modal-confirmar">
+  <div class="modal modal-sm">
+    <div class="modal-header"><h3 id="confirmar-titulo"><i class="fas fa-triangle-exclamation"></i> Confirmar acción</h3><button class="modal-close" onclick="cerrarModal('modal-confirmar')"><i class="fas fa-times"></i></button></div>
+    <div class="modal-body"><p id="confirmar-mensaje" class="confirmar-texto"></p></div>
+    <div class="modal-footer"><button class="btn-secondary" onclick="cerrarModal('modal-confirmar')">Cancelar</button><button class="btn-primary btn-confirmar-peligro" id="confirmar-btn-si"><i class="fas fa-check"></i> Sí, continuar</button></div>
+  </div>
+</div>
+
+<!-- MODAL STOCK BAJO -->
+<div class="modal-overlay" id="modal-stock-bajo">
+  <div class="modal">
+    <div class="modal-header"><h3><i class="fas fa-triangle-exclamation"></i> Productos con Stock Bajo</h3><button class="modal-close" onclick="cerrarModal('modal-stock-bajo')"><i class="fas fa-times"></i></button></div>
+    <div class="modal-body"><div id="stock-bajo-lista"></div></div>
+    <div class="modal-footer"><button class="btn-primary" onclick="cerrarModal('modal-stock-bajo')">Entendido</button></div>
+  </div>
+</div>
+
+<!-- MODAL VENTA COMPLETADA -->
+<div class="modal-overlay" id="modal-venta-completada">
+  <div class="modal modal-sm">
+    <div class="modal-header"><h3><i class="fas fa-circle-check"></i> Venta Completada</h3><button class="modal-close" onclick="cerrarModal('modal-venta-completada')"><i class="fas fa-times"></i></button></div>
+    <div class="modal-body"><div class="recibo-preview" id="recibo-preview"></div></div>
+    <div class="modal-footer"><button class="btn-secondary" onclick="cerrarModal('modal-venta-completada')">Cerrar</button><button class="btn-primary" onclick="imprimirRecibo()"><i class="fas fa-print"></i> Imprimir Recibo</button></div>
+  </div>
+</div>
+
+<div id="recibo-imprimible"></div>
+<div id="toast-container"></div>
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
