@@ -1337,31 +1337,21 @@ def _generar_certificado_https(cert_path, key_path):
 
 if __name__ == '__main__':
     init_db()
-    ip_local = obtener_ip_local()
-    base_dir = os.path.dirname(os.path.abspath(__file__))
-    cert = os.path.join(base_dir, 'cert.pem')
-    key = os.path.join(base_dir, 'key.pem')
-
-    # Si no hay certificado, lo crea solo (para la camara del celular)
-    if not (os.path.isfile(cert) and os.path.isfile(key)):
-        print("\n   Generando certificado HTTPS automaticamente...")
-        _generar_certificado_https(cert, key)
-
-    usar_https = os.path.isfile(cert) and os.path.isfile(key)
-    proto = 'https' if usar_https else 'http'
-    ssl_ctx = (cert, key) if usar_https else None
-
-    print("\n" + "=" * 56)
-    print(f"   {NOMBRE_TIENDA}")
-    print("=" * 56)
-    print(f"   En esta PC:                    {proto}://localhost:5000")
-    print(f"   Desde el celular (misma WiFi):  {proto}://{ip_local}:5000")
-    if usar_https:
-        print("   HTTPS activo → camara del celular lista")
-        print("   (En el celular: Avanzado → Continuar / Aceptar)")
+    # Railway asigna el puerto
+    port = int(os.environ.get('PORT', 5000))
+    is_railway = os.environ.get('RAILWAY_ENVIRONMENT') is not None
+    
+    if is_railway:
+        # En Railway: HTTP simple
+        app.run(debug=False, port=port, host='0.0.0.0')
     else:
-        print("   Sin HTTPS (camara del celular no disponible)")
-    print("=" * 56)
-    print(f"   Primera vez: se te pedira crear la contraseña de admin")
-    print("=" * 56 + "\n")
-    app.run(debug=False, port=5000, host='0.0.0.0', ssl_context=ssl_ctx)
+        # Local: con HTTPS para camara
+        ip_local = obtener_ip_local()
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        cert = os.path.join(base_dir, 'cert.pem')
+        key = os.path.join(base_dir, 'key.pem')
+        if not (os.path.isfile(cert) and os.path.isfile(key)):
+            _generar_certificado_https(cert, key)
+        usar_https = os.path.isfile(cert) and os.path.isfile(key)
+        ssl_ctx = (cert, key) if usar_https else None
+        app.run(debug=False, port=5000, host='0.0.0.0', ssl_context=ssl_ctx)
