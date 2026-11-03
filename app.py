@@ -537,9 +537,8 @@ def crear_producto():
         prov_id = int(prov_id) if prov_id not in (None, '', 0, '0') else None
         db.execute(
             """INSERT INTO productos (nombre,categoria,precio_compra,precio_venta,stock,stock_minimo,
-               stock_maximo,unidad,imagen_url,descripcion,codigo_barras,proveedor_id,tipo_medida,
-               )
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+               stock_maximo,unidad,imagen_url,descripcion,codigo_barras,proveedor_id,tipo_medida)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             (nombre, d.get('categoria', 'General'), _to_float(d.get('precio_compra')),
              _to_float(d.get('precio_venta')), _to_float(d.get('stock')), _to_int(d.get('stock_minimo'), 0),
              _to_int(d.get('stock_maximo')), unidad, d.get('imagen_url', ''),
@@ -577,7 +576,7 @@ def actualizar_producto(pid):
             """UPDATE productos SET
                nombre=?, categoria=?, precio_compra=?, precio_venta=?, stock=?,
                stock_minimo=?, stock_maximo=?, unidad=?, imagen_url=?, descripcion=?,
-               codigo_barras=?, proveedor_id=?, tipo_medida=?,
+               codigo_barras=?, proveedor_id=?, tipo_medida=?
                
                WHERE id=?""",
             (
