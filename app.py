@@ -553,7 +553,11 @@ def crear_producto():
              )
         )
         db.commit()
-        return jsonify(dict(db.execute("SELECT * FROM productos ORDER BY id DESC LIMIT 1").fetchone())), 201
+        new_id = db.execute("SELECT LAST_INSERT_ID() as id").fetchone()
+        if new_id and new_id.get('id'):
+            prod = db.execute("SELECT * FROM productos WHERE id=%s", (new_id['id'],)).fetchone()
+            return jsonify(dict(prod)) if prod else jsonify({'id': new_id['id']}), 201
+        return jsonify({'error': 'No se pudo obtener el ID del producto'}), 500
     except Exception as e:
         db.rollback()
         app.logger.error(f'Error crear producto: {e}')
