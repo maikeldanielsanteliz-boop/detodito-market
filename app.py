@@ -377,7 +377,11 @@ def crear_proveedor():
              (d.get('direccion') or '').strip(), (d.get('notas') or '').strip())
         )
         db.commit()
-        return jsonify(dict(db.execute("SELECT * FROM proveedores ORDER BY id DESC LIMIT 1").fetchone())), 201
+        new_id = db.execute("SELECT LAST_INSERT_ID() as id").fetchone()
+        if new_id and new_id.get('id'):
+            prov = db.execute("SELECT * FROM proveedores WHERE id=%s", (new_id['id'],)).fetchone()
+            return jsonify(dict(prov)) if prov else jsonify({'id': new_id['id']}), 201
+        return jsonify({'error': 'No se pudo obtener el ID'}), 500
     except Exception as e:
         db.rollback()
         return jsonify({'error': f'No se pudo crear el proveedor: {e}'}), 500
