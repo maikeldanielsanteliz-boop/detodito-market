@@ -50,8 +50,16 @@ def get_db():
     return g.db
 
 def init_db():
-    db = get_db()
-    db.execute("""
+    conn = mysql.connector.connect(
+        host=os.environ.get('MYSQLHOST'),
+        user=os.environ.get('MYSQLUSER'),
+        password=os.environ.get('MYSQLPASSWORD'),
+        database=os.environ.get('MYSQLDATABASE'),
+        port=int(os.environ.get('MYSQLPORT', 3306)),
+        autocommit=False
+    )
+    cur = conn.cursor()
+    cur.execute("""
         CREATE TABLE IF NOT EXISTS productos (
             id INT AUTO_INCREMENT PRIMARY KEY,
             nombre VARCHAR(255) NOT NULL,
@@ -70,7 +78,7 @@ def init_db():
             fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP
         )
     """)
-    db.execute("""
+    cur.execute("""
         CREATE TABLE IF NOT EXISTS ventas (
             id INT AUTO_INCREMENT PRIMARY KEY,
             producto_id INT NOT NULL,
@@ -88,13 +96,13 @@ def init_db():
             pagos_json TEXT
         )
     """)
-    db.execute("""
+    cur.execute("""
         CREATE TABLE IF NOT EXISTS configuracion (
             clave VARCHAR(100) PRIMARY KEY,
             valor TEXT
         )
     """)
-    db.execute("""
+    cur.execute("""
         CREATE TABLE IF NOT EXISTS metodos_pago (
             id INT AUTO_INCREMENT PRIMARY KEY,
             nombre VARCHAR(100) NOT NULL,
@@ -106,7 +114,7 @@ def init_db():
             datos_telefono VARCHAR(50) DEFAULT ''
         )
     """)
-    db.execute("""
+    cur.execute("""
         CREATE TABLE IF NOT EXISTS proveedores (
             id INT AUTO_INCREMENT PRIMARY KEY,
             nombre VARCHAR(255) NOT NULL,
@@ -118,7 +126,7 @@ def init_db():
             fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP
         )
     """)
-    db.commit()
+    conn.commit()
 
 def close_db(e=None):
     db = g.pop('db', None)
