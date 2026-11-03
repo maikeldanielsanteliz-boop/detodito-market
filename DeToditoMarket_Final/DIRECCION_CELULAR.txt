@@ -1,2 +1,0 @@
-Abre esto en el celular (misma WiFi):
-https://192.168.110.131:5000
