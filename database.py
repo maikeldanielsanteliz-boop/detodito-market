@@ -6,11 +6,15 @@ from flask import g
 class MySQLRow(dict):
     """Simula sqlite3.Row con claves en minúsculas y Decimal a float."""
     def __init__(self, data):
+        if data is None:
+            super().__init__()
+            return
         converted = {}
         for k, v in data.items():
+            key = str(k).lower()
             if isinstance(v, Decimal):
                 v = float(v)
-            converted[k.lower()] = v
+            converted[key] = v
         super().__init__(converted)
     
     def __getitem__(self, key):
@@ -21,6 +25,12 @@ class MySQLRow(dict):
             raise IndexError(key)
         key = str(key).lower()
         return super().__getitem__(key)
+    
+    def get(self, key, default=None):
+        try:
+            return self[key]
+        except KeyError:
+            return default
 
 class MySQLCursor:
     """Wrapper para que mysql.connector se parezca a sqlite3."""
@@ -140,6 +150,8 @@ def init_db():
         )
     """)
     conn.commit()
+    cur.close()
+    conn.close()
 
 def close_db(e=None):
     db = g.pop('db', None)
