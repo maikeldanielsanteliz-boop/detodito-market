@@ -15,7 +15,7 @@ DATABASE = os.path.join(_data_dir, 'inventario.db')
 def get_db():
     if 'db' not in g:
         db_url = os.environ.get('DATABASE_URL')
-        if db_url and psycopg2:
+        if db_url and psycopg2:a
             g.db = psycopg2.connect(db_url, cursor_factory=psycopg2.extras.RealDictCursor)
         else:
             g.db = sqlite3.connect(DATABASE)
