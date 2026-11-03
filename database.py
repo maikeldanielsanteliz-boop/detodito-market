@@ -3,11 +3,20 @@ import mysql.connector
 from flask import g
 
 class MySQLRow(dict):
-    """Simula sqlite3.Row para acceso por nombre."""
+    """Simula sqlite3.Row para acceso por nombre o índice."""
     def __getitem__(self, key):
         if isinstance(key, int):
-            return list(self.values())[key]
-        return super().__getitem__(key)
+            vals = list(self.values())
+            if 0 <= key < len(vals):
+                return vals[key]
+            raise IndexError(key)
+        # Try exact match, then case-insensitive
+        if key in self:
+            return super().__getitem__(key)
+        for k in self:
+            if k.lower() == str(key).lower():
+                return super().__getitem__(k)
+        raise KeyError(key)
 
 class MySQLCursor:
     """Wrapper para que mysql.connector se parezca a sqlite3."""
