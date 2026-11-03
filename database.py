@@ -1,22 +1,26 @@
 import os
 import mysql.connector
+from decimal import Decimal
 from flask import g
 
 class MySQLRow(dict):
-    """Simula sqlite3.Row para acceso por nombre o índice."""
+    """Simula sqlite3.Row con claves en minúsculas y Decimal a float."""
+    def __init__(self, data):
+        converted = {}
+        for k, v in data.items():
+            if isinstance(v, Decimal):
+                v = float(v)
+            converted[k.lower()] = v
+        super().__init__(converted)
+    
     def __getitem__(self, key):
         if isinstance(key, int):
             vals = list(self.values())
             if 0 <= key < len(vals):
                 return vals[key]
             raise IndexError(key)
-        # Try exact match, then case-insensitive
-        if key in self:
-            return super().__getitem__(key)
-        for k in self:
-            if k.lower() == str(key).lower():
-                return super().__getitem__(k)
-        raise KeyError(key)
+        key = str(key).lower()
+        return super().__getitem__(key)
 
 class MySQLCursor:
     """Wrapper para que mysql.connector se parezca a sqlite3."""
