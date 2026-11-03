@@ -7,8 +7,8 @@ except ImportError:
     psycopg2 = None
 from flask import g
 
-# Usa volumen de Railway si existe, sino local
-_data_dir = os.environ.get('RAILWAY_VOLUME_MOUNT_PATH', os.path.join(os.path.dirname(__file__), 'instance'))
+# Volumen de Railway
+_data_dir = '/data'
 os.makedirs(_data_dir, exist_ok=True)
 DATABASE = os.path.join(_data_dir, 'inventario.db')
 
