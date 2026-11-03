@@ -511,7 +511,14 @@ def get_productos():
     bus = request.args.get('busqueda', '')
     if cat: q += " AND categoria=%s"; params.append(cat)
     if bus: q += " AND nombre LIKE %s"; params.append(f"%{bus}%")
-    return jsonify([dict(p) for p in db.execute(q + ' ORDER BY nombre', params).fetchall()])
+    rows = db.execute(q + ' ORDER BY nombre', params).fetchall()
+    result = []
+    for p in rows:
+        d = dict(p)
+        if 'id' not in d and 'ID' in d:
+            d['id'] = d['ID']
+        result.append(d)
+    return jsonify(result)
 
 
 @app.route('/api/productos', methods=['POST'])
@@ -953,8 +960,8 @@ def _datos_reporte(db, fi, ff):
 
     qv = "SELECT COUNT(DISTINCT venta_grupo_id),SUM(total),SUM(ganancia) FROM ventas WHERE 1=1"
     pv = []
-    if fi: qv += " AND DATE(fecha)>=?"; pv.append(fi)
-    if ff: qv += " AND DATE(fecha)<=?"; pv.append(ff)
+    if fi: qv += " AND DATE(fecha)>=%s"; pv.append(fi)
+    if ff: qv += " AND DATE(fecha)<=%s"; pv.append(ff)
     rv = db.execute(qv, pv).fetchone()
 
     qt = """SELECT p.nombre,p.categoria,SUM(v.cantidad) as c,SUM(v.total) as t,SUM(v.ganancia) as g
@@ -966,16 +973,16 @@ def _datos_reporte(db, fi, ff):
 
     qd = "SELECT DATE(fecha) as d,COUNT(DISTINCT venta_grupo_id) as n,SUM(cantidad) as u,SUM(total) as t,SUM(ganancia) as g FROM ventas WHERE 1=1"
     pd3 = []
-    if fi: qd += " AND DATE(fecha)>=?"; pd3.append(fi)
-    if ff: qd += " AND DATE(fecha)<=?"; pd3.append(ff)
+    if fi: qd += " AND DATE(fecha)>=%s"; pd3.append(fi)
+    if ff: qd += " AND DATE(fecha)<=%s"; pd3.append(ff)
     qd += " GROUP BY d ORDER BY d DESC"
     por_dia = db.execute(qd, pd3).fetchall()
 
     qm = """SELECT m.nombre, COUNT(DISTINCT v.venta_grupo_id) as n, SUM(v.total) as t
             FROM ventas v JOIN metodos_pago m ON v.metodo_pago_id=m.id WHERE 1=1"""
     pm = []
-    if fi: qm += " AND DATE(v.fecha)>=?"; pm.append(fi)
-    if ff: qm += " AND DATE(v.fecha)<=?"; pm.append(ff)
+    if fi: qm += " AND DATE(v.fecha)>=%s"; pm.append(fi)
+    if ff: qm += " AND DATE(v.fecha)<=%s"; pm.append(ff)
     qm += " GROUP BY m.id ORDER BY t DESC"
     metodos = db.execute(qm, pm).fetchall()
 
@@ -1117,8 +1124,8 @@ def exportar_excel():
               JOIN productos p ON v.producto_id=p.id
               LEFT JOIN metodos_pago m ON v.metodo_pago_id=m.id WHERE 1=1"""
     pvl = []
-    if fi: qven += " AND DATE(v.fecha)>=?"; pvl.append(fi)
-    if ff: qven += " AND DATE(v.fecha)<=?"; pvl.append(ff)
+    if fi: qven += " AND DATE(v.fecha)>=%s"; pvl.append(fi)
+    if ff: qven += " AND DATE(v.fecha)<=%s"; pvl.append(ff)
     qven += " ORDER BY v.venta_grupo_id DESC, v.id ASC"
     ventas = db.execute(qven, pvl).fetchall()
     ti = tg = 0; fila = 3; last_gid = None; gid_display = 0
