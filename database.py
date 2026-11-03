@@ -4,7 +4,7 @@ try:
     import psycopg2
     import psycopg2.extras
 except ImportError:
-    psycopg2 = None, os
+    psycopg2 = None
 from flask import g
 
 # Usa volumen de Railway si existe, sino local
