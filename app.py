@@ -823,7 +823,7 @@ def registrar_venta():
             prod = productos_info[pid]
             precio = float(item.get('precio_unitario', prod['precio_venta']))
             total = precio * cantidad
-            ganancia = (precio - prod['precio_compra']) * cantidad
+            ganancia = (float(precio) - float(prod['precio_compra'])) * float(cantidad)
             db.execute(
                 """INSERT INTO ventas (producto_id,cantidad,precio_unitario,total,ganancia,notas,fecha,
                    venta_grupo_id,metodo_pago_id,pago_referencia,pago_moneda,pago_monto,pagos_json)
