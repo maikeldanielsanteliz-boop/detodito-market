@@ -827,7 +827,7 @@ def registrar_venta():
             db.execute(
                 """INSERT INTO ventas (producto_id,cantidad,precio_unitario,total,ganancia,notas,fecha,
                    venta_grupo_id,metodo_pago_id,pago_referencia,pago_moneda,pago_monto,pagos_json)
-                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                 (pid, cantidad, precio, total, ganancia, notas, fecha, grupo_id, metodo_pago_id,
                  pago_referencia, pago_moneda, pago_monto, pagos_json)
             )
