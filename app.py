@@ -509,8 +509,8 @@ def get_productos():
     q, params = "SELECT * FROM productos WHERE 1=1", []
     cat = request.args.get('categoria', '')
     bus = request.args.get('busqueda', '')
-    if cat: q += " AND categoria=?"; params.append(cat)
-    if bus: q += " AND nombre LIKE ?"; params.append(f"%{bus}%")
+    if cat: q += " AND categoria=%s"; params.append(cat)
+    if bus: q += " AND nombre LIKE %s"; params.append(f"%{bus}%")
     return jsonify([dict(p) for p in db.execute(q + ' ORDER BY nombre', params).fetchall()])
 
 
@@ -635,7 +635,7 @@ def productos_venta():
            FROM productos WHERE 1=1"""
     params = []
     if bus:
-        q += " AND (nombre LIKE ? OR codigo_barras LIKE ?)"
+        q += " AND (nombre LIKE %s OR codigo_barras LIKE %s)"
         params += [f"%{bus}%", f"%{bus}%"]
     q += " ORDER BY nombre"
     return jsonify([dict(p) for p in db.execute(q, params).fetchall()])
