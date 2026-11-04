@@ -829,7 +829,7 @@ def registrar_venta():
 
         last = db.execute("SELECT MAX(venta_grupo_id) FROM ventas").fetchone()[0]
         grupo_id = (last or 0) + 1
-        fecha = datetime.now().isoformat()
+        fecha = datetime.now(timezone(timedelta(hours=-4))).isoformat()
         total_general = 0
 
         for item in items:
