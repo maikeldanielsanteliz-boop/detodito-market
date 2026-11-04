@@ -940,19 +940,19 @@ def dashboard():
     sb = db.execute("SELECT COUNT(*) FROM productos WHERE stock<=stock_minimo").fetchone()[0]
     so = db.execute("SELECT COUNT(*) FROM productos WHERE stock_maximo > 0 AND stock >= stock_maximo").fetchone()[0]
     vi = db.execute("SELECT SUM(stock*precio_compra) FROM productos").fetchone()[0] or 0
-    vh = db.execute("SELECT COUNT(DISTINCT venta_grupo_id),SUM(total),SUM(ganancia) FROM ventas WHERE DATE(fecha)=%s", (hoy,)).fetchone()
-    vm = db.execute("SELECT COUNT(DISTINCT venta_grupo_id),SUM(total),SUM(ganancia) FROM ventas WHERE DATE_FORMAT(fecha, '%Y-%m')=DATE_FORMAT(NOW(), '%Y-%m')").fetchone()
-    top = db.execute("SELECT p.nombre,p.imagen_url,SUM(v.cantidad) as tv,SUM(v.total) as ing FROM ventas v JOIN productos p ON v.producto_id=p.id GROUP BY p.id ORDER BY tv DESC LIMIT 5").fetchall()
-    v7 = db.execute("SELECT DATE(fecha) as dia,SUM(total) as total,SUM(ganancia) as ganancia FROM ventas WHERE fecha>=datetime('now','-7 days') GROUP BY dia ORDER BY dia").fetchall()
+    vh = db.execute("SELECT COUNT(DISTINCT venta_grupo_id) as c, SUM(total) as t, SUM(ganancia) as g FROM ventas WHERE DATE(fecha)=%s", (hoy,)).fetchone()
+    vm = db.execute("SELECT COUNT(DISTINCT venta_grupo_id) as c, SUM(total) as t, SUM(ganancia) as g FROM ventas WHERE DATE_FORMAT(fecha, '%Y-%m')=DATE_FORMAT(NOW(), '%Y-%m')").fetchone()
+    top = db.execute("SELECT p.nombre,p.imagen_url,SUM(v.cantidad) as tv,SUM(v.total) as ing FROM ventas v JOIN productos p ON v.producto_id=p.id GROUP BY p.id, p.nombre, p.imagen_url ORDER BY tv DESC LIMIT 5").fetchall()
+    v7 = db.execute("SELECT DATE(fecha) as dia,SUM(total) as total,SUM(ganancia) as ganancia FROM ventas WHERE fecha>=DATE_SUB(NOW(), INTERVAL 7 DAY) GROUP BY dia ORDER BY dia").fetchall()
     cats = db.execute("SELECT categoria,SUM(stock) as ts,COUNT(*) as np FROM productos GROUP BY categoria").fetchall()
     metodos = db.execute("""SELECT m.nombre, COUNT(DISTINCT v.venta_grupo_id) as n, SUM(v.total) as t
                             FROM ventas v JOIN metodos_pago m ON v.metodo_pago_id=m.id
                             WHERE DATE_FORMAT(v.fecha, '%Y-%m')=DATE_FORMAT(NOW(), '%Y-%m')
-                            GROUP BY m.id ORDER BY t DESC""").fetchall()
+                            GROUP BY m.id, m.nombre ORDER BY t DESC""").fetchall()
     return jsonify({
         'total_productos': tp, 'stock_bajo': sb, 'stock_exceso': so, 'valor_inventario': round(vi, 2),
-        'ventas_hoy': {'cantidad': vh[0] or 0, 'total': round(vh[1] or 0, 2), 'ganancia': round(vh[2] or 0, 2)},
-        'ventas_mes': {'cantidad': vm[0] or 0, 'total': round(vm[1] or 0, 2), 'ganancia': round(vm[2] or 0, 2)},
+        'ventas_hoy': {'cantidad': vh['c'] or 0, 'total': round(float(vh['t'] or 0), 2), 'ganancia': round(float(vh['g'] or 0), 2)},
+        'ventas_mes': {'cantidad': vm['c'] or 0, 'total': round(float(vm['t'] or 0), 2), 'ganancia': round(float(vm['g'] or 0), 2)},
         'top_productos': [dict(p) for p in top],
         'ventas_7dias': [dict(v) for v in v7],
         'categorias_stock': [dict(c) for c in cats],
