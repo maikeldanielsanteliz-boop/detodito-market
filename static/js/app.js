@@ -1630,7 +1630,7 @@ function renderVentas(grupos) {
     return;
   }
   document.getElementById('ventas-lista').innerHTML = grupos.map((g, gi) => {
-    const fecha = new Date(g.fecha).toLocaleString('es-ES', {dateStyle:'short', timeStyle:'short'});
+    const fecha = g.fecha ? new Date(g.fecha.replace(' ', 'T')).toLocaleString('es-ES', {dateStyle:'short', timeStyle:'short'}) : '—';
     const totalBs = tasaActual ? `<span class="venta-grupo-bs">Bs ${fmtBs(g.total*tasaActual)}</span>` : '';
     const items = g.items.map(item => `<div class="venta-item-row">
         <img class="venta-item-img" src="${item.imagen_url||''}" onerror="this.src='https://via.placeholder.com/30/1a1d30/6c63ff?text=📦'" alt="">
@@ -2005,4 +2005,3 @@ function eliminarProveedor(id, nombre) {
     } catch(e) { notificar('Error al eliminar', 'error'); }
   });
 }
-
