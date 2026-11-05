@@ -489,7 +489,9 @@ function editarProducto(id) {
   actualizarUnidadesPorTipo(p.unidad || 'unidad');
   cargarSelectProveedores(p.proveedor_id || '');
   document.getElementById('prod-precio-compra').value = p.precio_compra;
-  document.getElementById('prod-precio-venta').value = p.precio_venta;  document.getElementById('prod-stock-min').value = p.stock_minimo;
+  document.getElementById('prod-precio-venta').value = p.precio_venta;
+  document.getElementById('prod-stock').value = p.stock || 0;
+  document.getElementById('prod-stock-min').value = p.stock_minimo;
   document.getElementById('prod-stock-max').value = p.stock_maximo || 0;
   document.getElementById('prod-descripcion').value = p.descripcion || '';
   document.getElementById('prod-img-url').value = p.imagen_url || '';
@@ -1630,7 +1632,8 @@ function renderVentas(grupos) {
     return;
   }
   document.getElementById('ventas-lista').innerHTML = grupos.map((g, gi) => {
-    const fecha = g.fecha ? new Date(g.fecha.replace(' ', 'T')).toLocaleString('es-ES', {dateStyle:'short', timeStyle:'short'}) : '—';
+    const d = g.fecha ? new Date(g.fecha.replace(' ', 'T')) : null;
+    const fecha = d ? d.toLocaleDateString('es-ES', {day:'2-digit', month:'2-digit', year:'2-digit'}) + ', ' + d.toLocaleTimeString('es-ES', {hour:'2-digit', minute:'2-digit', hour12:false}) : '—';
     const totalBs = tasaActual ? `<span class="venta-grupo-bs">Bs ${fmtBs(g.total*tasaActual)}</span>` : '';
     const items = g.items.map(item => `<div class="venta-item-row">
         <img class="venta-item-img" src="${item.imagen_url||''}" onerror="this.src='https://via.placeholder.com/30/1a1d30/6c63ff?text=📦'" alt="">
