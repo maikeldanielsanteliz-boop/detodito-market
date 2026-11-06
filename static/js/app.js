@@ -2008,3 +2008,59 @@ function eliminarProveedor(id, nombre) {
     } catch(e) { notificar('Error al eliminar', 'error'); }
   });
 }
+
+
+// ── VENTAS EN PAUSA ────────────────────────────────
+let ventasPausadas = JSON.parse(localStorage.getItem('ventas_pausadas') || '[]');
+
+function pausarVenta() {
+  if (!posCarrito.length) { notificar('El carrito está vacío', 'warning'); return; }
+  const nombre = prompt('Nombre del cliente (opcional):') || 'Cliente';
+  ventasPausadas.push({
+    id: Date.now(),
+    nombre: nombre,
+    carrito: [...posCarrito],
+    fecha: new Date().toLocaleString()
+  });
+  localStorage.setItem('ventas_pausadas', JSON.stringify(ventasPausadas));
+  posCarrito = [];
+  renderPosCarrito();
+  renderPausadas();
+  notificar('Venta pausada', 'success');
+}
+
+function renderPausadas() {
+  const box = document.getElementById('ventas-pausadas');
+  const lista = document.getElementById('lista-pausadas');
+  if (!ventasPausadas.length) { box.style.display = 'none'; return; }
+  box.style.display = 'block';
+  lista.innerHTML = ventasPausadas.map((v, i) => `
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;background:var(--bg-card);border-radius:8px;margin-bottom:6px;font-size:13px">
+      <span><strong>${v.nombre}</strong> · ${v.carrito.length} prod · ${v.fecha}</span>
+      <span>
+        <button class="btn-secondary btn-sm" onclick="reanudarVenta(${i})" style="margin-right:4px"><i class="fas fa-play"></i></button>
+        <button class="btn-danger btn-sm" onclick="eliminarPausa(${i})"><i class="fas fa-trash"></i></button>
+      </span>
+    </div>
+  `).join('');
+}
+
+function reanudarVenta(idx) {
+  if (posCarrito.length && !confirm('Hay productos en el carrito. ¿Reemplazarlos?')) return;
+  posCarrito = ventasPausadas[idx].carrito;
+  ventasPausadas.splice(idx, 1);
+  localStorage.setItem('ventas_pausadas', JSON.stringify(ventasPausadas));
+  renderPosCarrito();
+  renderPausadas();
+  notificar('Venta reanudada', 'success');
+}
+
+function eliminarPausa(idx) {
+  if (!confirm('¿Eliminar esta venta pausada?')) return;
+  ventasPausadas.splice(idx, 1);
+  localStorage.setItem('ventas_pausadas', JSON.stringify(ventasPausadas));
+  renderPausadas();
+}
+
+// Show paused on load
+document.addEventListener('DOMContentLoaded', renderPausadas);
