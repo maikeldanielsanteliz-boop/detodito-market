@@ -1387,6 +1387,8 @@ function renderPosCarrito() {
   document.getElementById('pos-total-box').style.display = 'flex';
   const btnPagar = document.getElementById('btn-ir-pagar');
   if (btnPagar) btnPagar.style.display = total > 0 ? 'inline-flex' : 'none';
+  const btnPausar = document.getElementById('btn-pausar');
+  if (btnPausar) btnPausar.style.display = total > 0 ? 'inline-flex' : 'none';
   // Si estamos en paso pago, actualizar totales allá también
   const tUsd = document.getElementById('pos-pago-total-usd');
   const tBs = document.getElementById('pos-pago-total-bs');
