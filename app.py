@@ -1397,12 +1397,16 @@ def listar_pausadas():
 @app.route('/api/ventas-pausadas', methods=['POST'])
 def crear_pausada():
     db = get_db()
-    data = request.get_json() or {}
-    nombre = data.get('nombre', 'Cliente')
-    carrito = data.get('carrito', '[]')
-    db.execute("INSERT INTO ventas_pausadas (nombre, carrito) VALUES (%s, %s)", (nombre, carrito))
-    db.commit()
-    return jsonify({'ok': True})
+    try:
+        data = request.get_json() or {}
+        nombre = data.get('nombre', 'Cliente')
+        carrito = data.get('carrito', '[]')
+        db.execute("INSERT INTO ventas_pausadas (nombre, carrito) VALUES (%s, %s)", (str(nombre), str(carrito)))
+        db.commit()
+        return jsonify({'ok': True})
+    except Exception as e:
+        db.rollback()
+        return jsonify({'ok': False})
 
 @app.route('/api/ventas-pausadas/<int:pid>', methods=['DELETE'])
 def borrar_pausada(pid):
