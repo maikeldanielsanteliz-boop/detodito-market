@@ -149,6 +149,14 @@ def init_db():
             fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP
         )
     """)
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS ventas_pausadas (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            nombre VARCHAR(255) DEFAULT 'Cliente',
+            carrito TEXT NOT NULL,
+            fecha DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
     conn.commit()
     cur.close()
     conn.close()
