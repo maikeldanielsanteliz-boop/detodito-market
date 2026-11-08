@@ -1680,22 +1680,6 @@ function limpiarFiltrosVentas() {
     notificar('Filtros limpiados', 'success');
   });
 }
-
-async function recalcularGanancias() {
-  if (!confirm('¿Recalcular la ganancia de todas las ventas con el costo actual de los productos?')) return;
-  try {
-    const r = await fetch('/api/ventas/recalcular', {method:'POST'});
-    const d = await r.json();
-    if (d.ok) {
-      notificar('Ganancias recalculadas: ' + d.actualizadas + ' ventas', 'success');
-      cargarVentas();
-    } else {
-      notificar(d.error || 'Error', 'error');
-    }
-  } catch(e) {
-    notificar('Error de conexión', 'error');
-  }
-}
 function eliminarGrupoVenta(gid) {
   confirmarModal('¿Eliminar esta venta completa? El stock se repondrá.', async () => {
     try {
