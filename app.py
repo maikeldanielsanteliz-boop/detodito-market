@@ -699,8 +699,8 @@ def get_ventas():
            FROM ventas v JOIN productos p ON v.producto_id=p.id
            LEFT JOIN metodos_pago m ON v.metodo_pago_id=m.id WHERE 1=1"""
     params = []
-    if fi: q += " AND DATE(v.fecha AT TIME ZONE 'UTC' AT TIME ZONE 'America/Caracas')>=%s"; params.append(fi)
-    if ff: q += " AND DATE(v.fecha AT TIME ZONE 'UTC' AT TIME ZONE 'America/Caracas')<=%s"; params.append(ff)
+    if fi: q += " AND DATE(v.fecha::timestamp AT TIME ZONE 'UTC' AT TIME ZONE 'America/Caracas')>=%s"; params.append(fi)
+    if ff: q += " AND DATE(v.fecha::timestamp AT TIME ZONE 'UTC' AT TIME ZONE 'America/Caracas')<=%s"; params.append(ff)
     q += " ORDER BY v.venta_grupo_id DESC, v.id ASC"
     rows = db.execute(q, params).fetchall()
 
@@ -949,9 +949,9 @@ def dashboard():
     sb = db.execute("SELECT COUNT(*) FROM productos WHERE stock<=stock_minimo").fetchone()[0]
     so = db.execute("SELECT COUNT(*) FROM productos WHERE stock_maximo > 0 AND stock >= stock_maximo").fetchone()[0]
     vi = db.execute("SELECT SUM(stock*precio_compra) FROM productos").fetchone()[0] or 0
-    vh = db.execute("SELECT COUNT(DISTINCT venta_grupo_id) as c, SUM(total) as t, SUM(ganancia) as g FROM ventas WHERE DATE(fecha AT TIME ZONE 'UTC' AT TIME ZONE 'America/Caracas')=%s", (hoy,)).fetchone()
+    vh = db.execute("SELECT COUNT(DISTINCT venta_grupo_id) as c, SUM(total) as t, SUM(ganancia) as g FROM ventas WHERE DATE(fecha::timestamp AT TIME ZONE 'UTC' AT TIME ZONE 'America/Caracas')=%s", (hoy,)).fetchone()
     inicio_mes = hoy[:8] + '01'
-    vm = db.execute("SELECT COUNT(DISTINCT venta_grupo_id) as c, SUM(total) as t, SUM(ganancia) as g FROM ventas WHERE DATE(fecha AT TIME ZONE 'UTC' AT TIME ZONE 'America/Caracas') >= %s AND DATE(fecha AT TIME ZONE 'UTC' AT TIME ZONE 'America/Caracas') <= %s", (inicio_mes, hoy)).fetchone()
+    vm = db.execute("SELECT COUNT(DISTINCT venta_grupo_id) as c, SUM(total) as t, SUM(ganancia) as g FROM ventas WHERE DATE(fecha::timestamp AT TIME ZONE 'UTC' AT TIME ZONE 'America/Caracas') >= %s AND DATE(fecha::timestamp AT TIME ZONE 'UTC' AT TIME ZONE 'America/Caracas') <= %s", (inicio_mes, hoy)).fetchone()
     top = db.execute("SELECT p.nombre,p.imagen_url,SUM(v.cantidad) as tv,SUM(v.total) as ing FROM ventas v JOIN productos p ON v.producto_id=p.id GROUP BY p.id, p.nombre, p.imagen_url ORDER BY tv DESC LIMIT 5").fetchall()
     v7 = db.execute("SELECT DATE(fecha) as dia,SUM(total) as total,SUM(ganancia) as ganancia FROM ventas WHERE fecha>=DATE_SUB(NOW(), INTERVAL 7 DAY) GROUP BY dia ORDER BY dia").fetchall()
     cats = db.execute("SELECT categoria,SUM(stock) as ts,COUNT(*) as np FROM productos GROUP BY categoria").fetchall()
