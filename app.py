@@ -1370,3 +1370,27 @@ if __name__ == '__main__':
         usar_https = os.path.isfile(cert) and os.path.isfile(key)
         ssl_ctx = (cert, key) if usar_https else None
         app.run(debug=False, port=5000, host='0.0.0.0', ssl_context=ssl_ctx)
+
+@app.route('/api/ventas-pausadas', methods=['GET'])
+def listar_pausadas():
+    db = get_db()
+    rows = db.execute("SELECT id, nombre, carrito, fecha FROM ventas_pausadas ORDER BY id DESC").fetchall()
+    return jsonify([{'id': r['id'], 'nombre': r['nombre'], 'carrito': r['carrito'], 'fecha': str(r['fecha'])} for r in rows])
+
+@app.route('/api/ventas-pausadas', methods=['POST'])
+def crear_pausada():
+    db = get_db()
+    data = request.get_json() or {}
+    nombre = data.get('nombre', 'Cliente')
+    carrito = data.get('carrito', '[]')
+    db.execute("INSERT INTO ventas_pausadas (nombre, carrito) VALUES (%s, %s)", (nombre, carrito))
+    db.commit()
+    return jsonify({'ok': True})
+
+@app.route('/api/ventas-pausadas/<int:pid>', methods=['DELETE'])
+def borrar_pausada(pid):
+    db = get_db()
+    db.execute("DELETE FROM ventas_pausadas WHERE id=%s", (pid,))
+    db.commit()
+    return jsonify({'ok': True})
+
