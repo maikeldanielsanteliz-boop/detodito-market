@@ -1766,6 +1766,8 @@ async function guardarEdicionVenta() {
     if (!res.ok) { notificar(d.error || 'Error al guardar', 'error'); return; }
     notificar('Venta actualizada ✓', 'success');
     cerrarModal('modal-editar-venta');
+    document.getElementById('v-fecha-ini').value = '';
+    document.getElementById('v-fecha-fin').value = '';
     cargarVentas(); cargarDashboard(); cargarProductosVenta();
   } catch(e) {}
 }
@@ -2020,27 +2022,31 @@ async function cargarPausadas() {
   try {
     const r = await fetch('/api/ventas-pausadas');
     ventasPausadas = await r.json();
+    console.log('Pausadas:', ventasPausadas);
     renderPausadas();
-  } catch(e) {}
+  } catch(e) { console.error(e); }
 }
 
 async function pausarVenta() {
   if (!posCarrito.length) { notificar('El carrito está vacío', 'warning'); return; }
   const nombre = prompt('Nombre del cliente (opcional):') || 'Cliente';
-  await fetch('/api/ventas-pausadas', {
-    method: 'POST',
-    headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({nombre, carrito: JSON.stringify(posCarrito)})
-  });
-  posCarrito = [];
-  renderPosCarrito();
-  cargarPausadas();
-  notificar('Venta pausada', 'success');
+  try {
+    await fetch('/api/ventas-pausadas', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({nombre, carrito: JSON.stringify(posCarrito)})
+    });
+    posCarrito = [];
+    renderPosCarrito();
+    await cargarPausadas();
+    notificar('Venta pausada', 'success');
+  } catch(e) {}
 }
 
 function renderPausadas() {
   const box = document.getElementById('ventas-pausadas');
   const lista = document.getElementById('lista-pausadas');
+  if (!box || !lista) return;
   if (!ventasPausadas.length) { box.style.display = 'none'; return; }
   box.style.display = 'block';
   lista.innerHTML = ventasPausadas.map((v) => {
