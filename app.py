@@ -695,12 +695,12 @@ def get_ventas():
     db = get_db()
     fi = request.args.get('fecha_inicio', '')
     ff = request.args.get('fecha_fin', '')
-    q = """SELECT v.*, p.nombre as producto_nombre, p.imagen_url, p.unidad, m.nombre as metodo_pago_nombre
+    q = """SELECT v.*, p.nombre as producto_nombre, p.imagen_url, p.unidad, p.precio_compra, m.nombre as metodo_pago_nombre
            FROM ventas v JOIN productos p ON v.producto_id=p.id
            LEFT JOIN metodos_pago m ON v.metodo_pago_id=m.id WHERE 1=1"""
     params = []
-    if fi: q += " AND DATE(v.fecha)>=%s"; params.append(fi)
-    if ff: q += " AND DATE(v.fecha)<=%s"; params.append(ff)
+    if fi: q += " AND DATE(v.fecha AT TIME ZONE 'UTC' AT TIME ZONE 'America/Caracas')>=%s"; params.append(fi)
+    if ff: q += " AND DATE(v.fecha AT TIME ZONE 'UTC' AT TIME ZONE 'America/Caracas')<=%s"; params.append(ff)
     q += " ORDER BY v.venta_grupo_id DESC, v.id ASC"
     rows = db.execute(q, params).fetchall()
 
@@ -716,7 +716,7 @@ def get_ventas():
         grupos[gid]['items'].append({
             'id': r['id'], 'producto_id': r['producto_id'], 'producto_nombre': r['producto_nombre'],
             'imagen_url': r['imagen_url'], 'cantidad': r['cantidad'], 'unidad': r['unidad'] or '',
-            'precio_unitario': r['precio_unitario'], 'total': r['total'], 'ganancia': r['ganancia'],
+            'precio_unitario': r['precio_unitario'], 'precio_compra': r['precio_compra'], 'total': r['total'], 'ganancia': r['ganancia'],
         })
         grupos[gid]['total'] += r['total'] or 0
         grupos[gid]['ganancia'] += r['ganancia'] or 0
@@ -949,9 +949,9 @@ def dashboard():
     sb = db.execute("SELECT COUNT(*) FROM productos WHERE stock<=stock_minimo").fetchone()[0]
     so = db.execute("SELECT COUNT(*) FROM productos WHERE stock_maximo > 0 AND stock >= stock_maximo").fetchone()[0]
     vi = db.execute("SELECT SUM(stock*precio_compra) FROM productos").fetchone()[0] or 0
-    vh = db.execute("SELECT COUNT(DISTINCT venta_grupo_id) as c, SUM(total) as t, SUM(ganancia) as g FROM ventas WHERE DATE(fecha)=%s", (hoy,)).fetchone()
+    vh = db.execute("SELECT COUNT(DISTINCT venta_grupo_id) as c, SUM(total) as t, SUM(ganancia) as g FROM ventas WHERE DATE(fecha AT TIME ZONE 'UTC' AT TIME ZONE 'America/Caracas')=%s", (hoy,)).fetchone()
     inicio_mes = hoy[:8] + '01'
-    vm = db.execute("SELECT COUNT(DISTINCT venta_grupo_id) as c, SUM(total) as t, SUM(ganancia) as g FROM ventas WHERE DATE(fecha) >= %s AND DATE(fecha) <= %s", (inicio_mes, hoy)).fetchone()
+    vm = db.execute("SELECT COUNT(DISTINCT venta_grupo_id) as c, SUM(total) as t, SUM(ganancia) as g FROM ventas WHERE DATE(fecha AT TIME ZONE 'UTC' AT TIME ZONE 'America/Caracas') >= %s AND DATE(fecha AT TIME ZONE 'UTC' AT TIME ZONE 'America/Caracas') <= %s", (inicio_mes, hoy)).fetchone()
     top = db.execute("SELECT p.nombre,p.imagen_url,SUM(v.cantidad) as tv,SUM(v.total) as ing FROM ventas v JOIN productos p ON v.producto_id=p.id GROUP BY p.id, p.nombre, p.imagen_url ORDER BY tv DESC LIMIT 5").fetchall()
     v7 = db.execute("SELECT DATE(fecha) as dia,SUM(total) as total,SUM(ganancia) as ganancia FROM ventas WHERE fecha>=DATE_SUB(NOW(), INTERVAL 7 DAY) GROUP BY dia ORDER BY dia").fetchall()
     cats = db.execute("SELECT categoria,SUM(stock) as ts,COUNT(*) as np FROM productos GROUP BY categoria").fetchall()
@@ -1404,3 +1404,18 @@ def borrar_pausada(pid):
     db.commit()
     return jsonify({'ok': True})
 
+
+@app.route('/api/ventas/recalcular', methods=['POST'])
+@admin_required
+def recalcular_ganancias():
+    db = get_db()
+    try:
+        rows = db.execute("SELECT v.id, v.precio_unitario, v.cantidad, p.precio_compra FROM ventas v JOIN productos p ON v.producto_id=p.id").fetchall()
+        for r in rows:
+            ganancia = (float(r['precio_unitario']) - float(r['precio_compra'] or 0)) * float(r['cantidad'])
+            db.execute("UPDATE ventas SET ganancia=%s WHERE id=%s", (ganancia, r['id']))
+        db.commit()
+        return jsonify({'ok': True, 'actualizadas': len(rows)})
+    except Exception as e:
+        db.rollback()
+        return jsonify({'error': str(e)}), 500
