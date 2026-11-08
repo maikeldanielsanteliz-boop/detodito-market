@@ -2062,7 +2062,7 @@ function renderPausadas() {
 }
 
 async function reanudarVenta(id) {
-  if (posCarrito.length && !confirm('Hay productos en el carrito. ¿Reemplazarlos?')) return;
+  if (posCarrito.length && !confirm('Hay productos en el carrito. ¿Reemplazarlos?')) return; 
   const v = ventasPausadas.find(x => x.id === id);
   if (!v) return;
   posCarrito = JSON.parse(v.carrito || '[]');
