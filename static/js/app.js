@@ -1640,7 +1640,7 @@ function renderVentas(grupos) {
     const items = g.items.map(item => `<div class="venta-item-row">
         <img class="venta-item-img" src="${item.imagen_url||''}" onerror="this.src='https://via.placeholder.com/30/1a1d30/6c63ff?text=📦'" alt="">
         <div class="venta-item-nombre">${item.producto_nombre}</div>
-        <div class="venta-item-cant">${item.cantidad} uds</div>
+        <div class="venta-item-cant">${item.cantidad} ${item.unidad||"uds"}</div>
         <div class="venta-item-precio">$${fmt(item.precio_unitario)}</div>
         <div class="venta-item-total">$${fmt(item.total)}</div>
       </div>`).join('');
@@ -1667,6 +1667,7 @@ function toggleGrupo(gi) {
   const el = document.getElementById(`grupo-items-${gi}`);
   el.style.display = el.style.display === 'block' ? 'none' : 'block';
 }
+
 function limpiarFiltrosVentas() {
   const ini = document.getElementById('v-fecha-ini');
   const fin = document.getElementById('v-fecha-fin');
