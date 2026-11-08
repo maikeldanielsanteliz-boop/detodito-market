@@ -1403,7 +1403,7 @@ def crear_pausada():
         carrito = data.get('carrito', '[]')
         db.execute("INSERT INTO ventas_pausadas (nombre, carrito) VALUES (%s, %s)", (str(nombre), str(carrito)))
         db.commit()
-        return jsonify({'ok': True})
+        return jsonify({'ok': True}) 
     except Exception as e:
         db.rollback()
         return jsonify({'ok': False})
