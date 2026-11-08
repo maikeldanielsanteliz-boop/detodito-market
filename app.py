@@ -20,7 +20,7 @@ app.config['SECRET_KEY'] = 'todito_market_2024_secreto'
 app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024
 app.permanent_session_lifetime = timedelta(hours=12)
 
-UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), 'static', 'uploads')
+UPLOAD_FOLDER = os.path.join(os.environ.get("RAILWAY_VOLUME_MOUNT_PATH", os.path.dirname(__file__)), "uploads")
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 NOMBRE_TIENDA = "DE TODITO MARKET MyF, C.A"
@@ -230,9 +230,16 @@ def subir_imagen():
         filename = f"{safe}_{datetime.now().strftime('%Y%m%d%H%M%S%f')}.{ext}"
         with open(os.path.join(UPLOAD_FOLDER, filename), 'wb') as f:
             f.write(base64.b64decode(b64data))
-        return jsonify({'url': f'/static/uploads/{filename}'})
+        return jsonify({'url': f'/uploads/{filename}'})
     except Exception:
         return jsonify({'error': 'No se pudo guardar la imagen'}), 500
+
+
+# ── SERVIR FOTOS ──────────────────────────────────────────────
+from flask import send_from_directory
+@app.route("/uploads/<filename>")
+def servir_upload(filename):
+    return send_from_directory(UPLOAD_FOLDER, filename)
 
 
 # ── TASA DÓLAR (pública) ──────────────────────────────────────
@@ -688,7 +695,7 @@ def get_ventas():
     db = get_db()
     fi = request.args.get('fecha_inicio', '')
     ff = request.args.get('fecha_fin', '')
-    q = """SELECT v.*, p.nombre as producto_nombre, p.imagen_url, m.nombre as metodo_pago_nombre
+    q = """SELECT v.*, p.nombre as producto_nombre, p.imagen_url, p.unidad, m.nombre as metodo_pago_nombre
            FROM ventas v JOIN productos p ON v.producto_id=p.id
            LEFT JOIN metodos_pago m ON v.metodo_pago_id=m.id WHERE 1=1"""
     params = []
@@ -708,7 +715,7 @@ def get_ventas():
                            'items': [], 'total': 0, 'ganancia': 0}
         grupos[gid]['items'].append({
             'id': r['id'], 'producto_id': r['producto_id'], 'producto_nombre': r['producto_nombre'],
-            'imagen_url': r['imagen_url'], 'cantidad': r['cantidad'],
+            'imagen_url': r['imagen_url'], 'cantidad': r['cantidad'], 'unidad': r['unidad'] or '',
             'precio_unitario': r['precio_unitario'], 'total': r['total'], 'ganancia': r['ganancia'],
         })
         grupos[gid]['total'] += r['total'] or 0
@@ -914,6 +921,7 @@ def editar_venta_grupo(gid):
         return jsonify({'error': 'No se pudo actualizar la venta. No se aplicó ningún cambio.'}), 500
 
 
+
 @app.route('/api/ventas/grupo/<int:gid>', methods=['DELETE'])
 @admin_required
 def eliminar_venta_grupo(gid):
@@ -934,6 +942,7 @@ def eliminar_venta_grupo(gid):
 @app.route('/api/dashboard', methods=['GET'])
 @admin_required
 def dashboard():
+
     db = get_db()
     hoy = date.today().isoformat()
     tp = db.execute("SELECT COUNT(*) FROM productos").fetchone()[0]
@@ -941,7 +950,8 @@ def dashboard():
     so = db.execute("SELECT COUNT(*) FROM productos WHERE stock_maximo > 0 AND stock >= stock_maximo").fetchone()[0]
     vi = db.execute("SELECT SUM(stock*precio_compra) FROM productos").fetchone()[0] or 0
     vh = db.execute("SELECT COUNT(DISTINCT venta_grupo_id) as c, SUM(total) as t, SUM(ganancia) as g FROM ventas WHERE DATE(fecha)=%s", (hoy,)).fetchone()
-    vm = db.execute("SELECT COUNT(DISTINCT venta_grupo_id) as c, SUM(total) as t, SUM(ganancia) as g FROM ventas WHERE DATE_FORMAT(fecha, '%Y-%m')=DATE_FORMAT(NOW(), '%Y-%m')").fetchone()
+    inicio_mes = hoy[:8] + '01'
+    vm = db.execute("SELECT COUNT(DISTINCT venta_grupo_id) as c, SUM(total) as t, SUM(ganancia) as g FROM ventas WHERE DATE(fecha) >= %s AND DATE(fecha) <= %s", (inicio_mes, hoy)).fetchone()
     top = db.execute("SELECT p.nombre,p.imagen_url,SUM(v.cantidad) as tv,SUM(v.total) as ing FROM ventas v JOIN productos p ON v.producto_id=p.id GROUP BY p.id, p.nombre, p.imagen_url ORDER BY tv DESC LIMIT 5").fetchall()
     v7 = db.execute("SELECT DATE(fecha) as dia,SUM(total) as total,SUM(ganancia) as ganancia FROM ventas WHERE fecha>=DATE_SUB(NOW(), INTERVAL 7 DAY) GROUP BY dia ORDER BY dia").fetchall()
     cats = db.execute("SELECT categoria,SUM(stock) as ts,COUNT(*) as np FROM productos GROUP BY categoria").fetchall()
