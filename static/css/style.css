@@ -53,7 +53,6 @@ body{font-family:'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helveti
 .conv-input:focus{border-color:var(--accent)}
 .btn-tasa-manual{width:100%;margin-top:7px;background:rgba(108,99,255,.15);border:1px solid var(--accent);color:var(--accent);border-radius:5px;padding:5px;font-size:10px;font-weight:600;cursor:pointer;transition:var(--tr);font-family:inherit}
 .btn-tasa-manual:hover{background:var(--accent);color:#fff}
-.tasa-origen{font-size:9px;color:var(--tm);margin-top:4px;text-align:center}
 
 .admin-session-box{margin:6px 10px 0;padding:10px;border-top:1px solid var(--border)}
 .btn-admin-login{width:100%;background:rgba(108,99,255,.15);border:1px solid var(--accent);color:var(--accent);border-radius:var(--rs);padding:9px;font-size:11.5px;font-weight:600;cursor:pointer;transition:var(--tr);font-family:inherit;display:flex;align-items:center;justify-content:center;gap:7px}
@@ -105,7 +104,6 @@ body{font-family:'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helveti
 .barcode-input-row{display:flex;gap:8px}
 .barcode-input-row input{flex:1}
 .barcode-input-row .btn-secondary{white-space:nowrap}
-.btn-camara{padding:9px 12px!important}
 
 .pos-metodo-pago{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;margin-top:14px}
 .pos-metodo-pago label{font-size:11px;font-weight:700;color:var(--ts);text-transform:uppercase;letter-spacing:.5px;display:flex;align-items:center;gap:6px;margin-bottom:10px}
@@ -303,13 +301,10 @@ body{font-family:'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helveti
 .upload-btn:hover{background:var(--accent);color:#fff}
 #input-file-hidden{display:none}
 .form-imagen-opciones input[type="text"]{background:var(--bg2);border:1px solid var(--border);border-radius:var(--rs);padding:8px 11px;color:var(--tp);font-size:12px;outline:none;font-family:inherit}
-.o-divider{font-size:10px;color:var(--tm);text-align:center}
 .precio-bs-hint{font-size:11px;color:var(--orange);font-family:'JetBrains Mono', 'SF Mono', Consolas, monospace,monospace;margin-top:3px}
 
 .btn-help-scan{background:rgba(108,99,255,.15);border:1px solid var(--accent);color:var(--accent);border-radius:20px;padding:4px 10px;font-size:10px;font-weight:700;cursor:pointer;text-transform:none;letter-spacing:0;font-family:inherit;display:inline-flex;align-items:center;gap:5px}
 .btn-help-scan:hover{background:var(--accent);color:#fff}
-.aviso-importante{display:flex;gap:11px;background:rgba(243,156,18,.1);border:1px solid rgba(243,156,18,.35);border-radius:var(--rs);padding:13px;margin-bottom:16px;font-size:12.5px;line-height:1.5;color:var(--tp)}
-.aviso-importante i{color:var(--orange);font-size:17px;flex-shrink:0;margin-top:1px}
 .pasos-escaneo{display:flex;flex-direction:column;gap:11px;margin-bottom:16px}
 .paso-escaneo{display:flex;gap:12px;align-items:flex-start}
 .paso-num{width:24px;height:24px;background:var(--accent);color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0}
@@ -363,7 +358,6 @@ body{font-family:'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helveti
 }
 .tk-r span:first-child{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .tk-r span:last-child{flex-shrink:0;text-align:right;white-space:nowrap}
-.tk-dim{font-size:10px}
 .tk-sep{
   font-size:10px;line-height:1;margin:3px 0;
   letter-spacing:-0.5px;overflow:hidden;white-space:nowrap;
@@ -446,3 +440,14 @@ body{font-family:'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helveti
 .vuelto-section{animation:toastIn .2s ease}
 .vuelto-resultado{min-height:1.2em}
 
+/* Facturas en pausa */
+.carrito-acciones{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.badge-pausa{display:inline-block;min-width:20px;padding:1px 7px;margin-left:4px;border-radius:999px;background:var(--orange);color:#fff;font-size:12px;font-weight:700;text-align:center}
+.pausa-ayuda{font-size:13px;color:var(--ts);margin:0 0 12px}
+.pausada-item{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px;margin-bottom:8px;border:1px solid var(--border);border-radius:var(--rs);background:var(--bg3);flex-wrap:wrap}
+.pausada-info strong{display:block;font-size:14px}
+.pausada-info small{display:block;font-size:12px;color:var(--ts);margin-top:2px}
+.pausada-total{font-weight:800;color:var(--accent);font-size:15px}
+.pausada-acciones{display:flex;gap:8px}
+.pausadas-vacio{text-align:center;color:var(--ts);padding:24px 8px}
+.page-header-acciones{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
