@@ -10,10 +10,10 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-<script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 </head>
 <body>
 
+<!-- Menú lateral: navegación, tasa del dólar y calculadora -->
 <aside class="sidebar" id="sidebar">
   <div class="sidebar-logo">
     <div class="logo-icon">🛒</div>
@@ -50,7 +50,9 @@
   </div>
 </aside>
 
+<!-- Contenido principal -->
 <main class="main-content">
+  <!-- Barra superior: título, búsqueda y sesión -->
   <header class="topbar">
     <button class="topbar-toggle" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
     <div class="topbar-title" id="topbar-title">Facturación</div>
@@ -64,17 +66,18 @@
 
   <!-- FACTURACIÓN -->
   <div id="page-facturacion" class="page active">
-    <div class="page-header"><div><h2>Facturación</h2><p class="page-subtitle">DE TODITO MARKET MyF, C.A</p></div></div>
+    <div class="page-header"><div><h2>Facturación</h2><p class="page-subtitle">DE TODITO MARKET MyF, C.A</p></div>
+      <button type="button" class="btn-secondary" id="btn-ver-pausadas" onclick="abrirPausadas()"><i class="fas fa-pause-circle"></i> En pausa <span class="badge-pausa" id="pausadas-badge" style="display:none">0</span></button>
+    </div>
     <div class="pos-layout">
       <div class="pos-scan-box">
         <label><i class="fas fa-barcode"></i> Código de Barras
           <button type="button" class="btn-help-scan" onclick="abrirModal('modal-como-escanear')"><i class="fas fa-circle-question"></i> ¿Cómo escaneo?</button>
         </label>
         <div class="barcode-input-row">
-          <input type="text" id="pos-barcode-input" placeholder="Pasa el lector USB aquí o escribe el código + Enter" autocomplete="off">
-          <button type="button" class="btn-secondary btn-sm btn-camara" onclick="abrirScannerCamara(posBuscarPorCodigo)" title="Cámara de esta PC"><i class="fas fa-camera"></i></button>
+          <input type="text" id="pos-barcode-input" placeholder="Pasa la pistola lectora aquí o escribe el código + Enter" autocomplete="off">
         </div>
-        <div class="pos-scan-hint">Lector USB (Roccia), cámara 📷 o escribir a mano + Enter</div>
+        <div class="pos-scan-hint">Pistola lector USB, o escribe el código a mano y presiona Enter</div>
       </div>
       <div class="pos-search-box">
         <label><i class="fas fa-search"></i> Buscar producto por nombre</label>
@@ -94,18 +97,14 @@
         <div class="carrito-total-usd" id="pos-total-usd"></div>
         <div class="carrito-total-bs" id="pos-total-bs"></div>
       </div>
-      <button type="button" class="btn-secondary btn-sm" id="btn-pausar" onclick="pausarVenta()" style="display:none">
-        <i class="fas fa-pause"></i> Pausar
-      </button>
-      <button type="button" class="btn-accent" id="btn-ir-pagar" onclick="irAPagar()" style="display:none">
-        <i class="fas fa-cash-register"></i> Pagar
-      </button>
-    </div>
-
-    <!-- VENTAS EN PAUSA -->
-    <div id="ventas-pausadas" style="margin-top:12px;display:none">
-      <div style="font-size:13px;font-weight:600;margin-bottom:6px;color:var(--text-muted)"><i class="fas fa-pause-circle"></i> Ventas en pausa</div>
-      <div id="lista-pausadas"></div>
+      <div class="carrito-acciones">
+        <button type="button" class="btn-secondary" id="btn-pausar" onclick="abrirPausar()" style="display:none" title="Guardar esta factura para atender a otro cliente">
+          <i class="fas fa-pause"></i> Pausar
+        </button>
+        <button type="button" class="btn-accent" id="btn-ir-pagar" onclick="irAPagar()" style="display:none">
+          <i class="fas fa-cash-register"></i> Pagar
+        </button>
+      </div>
     </div>
 
     <!-- PASO 2: PAGO (oculto hasta que toquen Pagar) -->
@@ -145,11 +144,16 @@
     </div>
   </div>
 
+  <!-- PANEL: indicadores y gráficos (se dibuja desde app.js) -->
   <div id="page-dashboard" class="page"></div>
 
+  <!-- INVENTARIO: tarjetas de productos con filtros -->
   <div id="page-inventario" class="page">
     <div class="page-header"><div><h2>Inventario</h2><p class="page-subtitle">Gestiona todos tus productos</p></div>
-      <button class="btn-primary" onclick="abrirModalProducto()"><i class="fas fa-plus"></i> Nuevo Producto</button></div>
+      <div class="page-header-acciones">
+        <button class="btn-secondary" id="btn-revisar-datos" onclick="abrirRevision()" title="Productos con precio en 0, nombres repetidos, stock raro..."><i class="fas fa-clipboard-check"></i> Revisar datos <span class="badge-pausa" id="revision-badge" style="display:none">0</span></button>
+        <button class="btn-primary" onclick="abrirModalProducto()"><i class="fas fa-plus"></i> Nuevo Producto</button>
+      </div></div>
     <div class="filtros-bar">
       <div class="filtro-search"><i class="fas fa-search"></i><input type="text" id="inv-search" placeholder="Buscar..." oninput="filtrarInventario()"></div>
       <select id="inv-categoria" onchange="filtrarInventario()"><option value="">Todas las categorías</option></select>
@@ -158,6 +162,7 @@
     <div class="productos-grid" id="productos-grid"></div>
   </div>
 
+  <!-- VENTAS: historial agrupado por factura -->
   <div id="page-ventas" class="page">
     <div class="page-header"><div><h2>Historial de Ventas</h2><p class="page-subtitle">Consulta, edita o anula ventas pasadas</p></div>
       <button class="btn-primary" onclick="irAFacturacion()"><i class="fas fa-cash-register"></i> Ir a Facturación</button></div>
@@ -166,25 +171,26 @@
       <div class="filtro-fecha"><label>Hasta:</label><input type="date" id="v-fecha-fin"></div>
       <button class="btn-secondary" onclick="cargarVentas()"><i class="fas fa-filter"></i> Filtrar</button>
       <button class="btn-secondary" onclick="limpiarFiltrosVentas()"><i class="fas fa-times"></i> Limpiar</button>
-          
-      
     </div>
     <div class="ventas-stats" id="ventas-stats"></div>
     <div id="ventas-lista"></div>
   </div>
 
+  <!-- MÉTODOS DE PAGO: administración -->
   <div id="page-metodos-pago" class="page">
     <div class="page-header"><div><h2>Métodos de Pago</h2><p class="page-subtitle">Para "Pago Móvil", configura aquí TUS datos (cédula, banco, teléfono) — se los das al cliente, no se piden en cada venta</p></div>
       <button class="btn-primary" onclick="abrirModalMetodoPago()"><i class="fas fa-plus"></i> Nuevo Método</button></div>
     <div id="metodos-pago-lista" class="metodos-pago-grid"></div>
   </div>
 
+  <!-- PROVEEDORES: administración -->
   <div id="page-proveedores" class="page">
     <div class="page-header"><div><h2>Proveedores</h2><p class="page-subtitle">A quién le compras — nombre, teléfono y datos de contacto</p></div>
       <button class="btn-primary" onclick="abrirModalProveedor()"><i class="fas fa-plus"></i> Nuevo Proveedor</button></div>
     <div id="proveedores-lista" class="metodos-pago-grid"></div>
   </div>
 
+  <!-- REPORTES: exportar a Excel o PDF -->
   <div id="page-reportes" class="page">
     <div class="page-header"><div><h2>Exportar Reportes</h2><p class="page-subtitle">Excel detallado o PDF resumen — precios en $ y Bs</p></div></div>
     <div class="reportes-grid">
@@ -257,7 +263,7 @@
       <div class="form-imagen-section">
         <label><i class="fas fa-image"></i>&nbsp; Imagen del Producto</label>
         <div class="form-imagen-row">
-          <img id="prod-img-preview" src="" onerror="this.src='https://via.placeholder.com/76x76/1a1d30/6c63ff?text=📦'" alt="">
+          <img id="prod-img-preview" src="" onerror="this.onerror=null;if(typeof IMG_PLACEHOLDER!=='undefined')this.src=IMG_PLACEHOLDER" alt="">
           <div class="form-imagen-opciones">
             <label class="upload-btn" for="input-file-hidden"><i class="fas fa-upload"></i><span id="upload-label-txt">Subir foto desde la PC</span></label>
             <input type="file" id="input-file-hidden" accept="image/*" onchange="cargarImagenLocal(event)">
@@ -276,8 +282,7 @@
         <div class="form-group span2">
           <label><i class="fas fa-barcode"></i> Código de Barras (opcional)</label>
           <div class="barcode-input-row">
-            <input type="text" id="prod-codigo-barras" placeholder="Escanea o escríbelo aquí" autocomplete="off">
-            <button type="button" class="btn-secondary btn-sm btn-camara" onclick="abrirScannerCamara(codigoEscaneadoParaProducto)" title="Cámara de esta PC"><i class="fas fa-camera"></i></button>
+            <input type="text" id="prod-codigo-barras" placeholder="Escanea con la pistola o escríbelo aquí" autocomplete="off">
             <button type="button" class="btn-secondary btn-sm" id="btn-buscar-info-codigo" onclick="buscarInfoPorCodigo()"><i class="fas fa-magnifying-glass"></i> Buscar info</button>
           </div>
           <div class="precio-bs-hint" style="color:var(--tm)">Intenta autocompletar nombre y foto usando una base pública de códigos</div>
@@ -344,6 +349,7 @@
         <table class="carrito-tabla"><thead><tr><th>Producto</th><th>Cantidad</th><th>Precio $</th><th>Subtotal $</th><th>Subtotal Bs</th><th></th></tr></thead><tbody id="edit-tbody"></tbody></table>
       </div>
       <div class="carrito-total" id="edit-total-box" style="display:none;margin-top:10px"><div class="carrito-total-usd" id="edit-total-usd"></div><div class="carrito-total-bs" id="edit-total-bs"></div></div>
+      <div class="pausa-ayuda" id="edit-pagos-nota" style="display:none;margin-top:12px"></div>
       <div class="form-group" style="margin-top:12px"><label><i class="fas fa-credit-card"></i> Método de Pago</label><select id="edit-metodo-pago" onchange="toggleEditMetodoExtra()"></select></div>
       <div class="form-group" id="edit-referencia-wrap" style="margin-top:10px"><label>Referencia</label><input type="text" id="edit-pago-referencia" placeholder="Número de referencia"></div>
     </div>
@@ -384,14 +390,13 @@
   <div class="modal">
     <div class="modal-header"><h3><i class="fas fa-barcode"></i> ¿Cómo escaneo un código?</h3><button class="modal-close" onclick="cerrarModal('modal-como-escanear')"><i class="fas fa-times"></i></button></div>
     <div class="modal-body">
-      <div class="aviso-importante"><i class="fas fa-camera"></i><span><strong>Cámara de esta PC (sin apps, gratis):</strong> si esta computadora tiene webcam, el botón 📷 la activa. Solo funciona abriendo el programa EN esta PC, no desde el celular por WiFi (restricción de seguridad del navegador).</span></div>
       <div class="pasos-escaneo">
-        <div class="paso-escaneo"><div class="paso-num">1</div><div class="paso-texto"><strong>App en tu celular:</strong> instala "Barcode to PC: Wi-Fi scanner" (iPhone/Android)</div></div>
-        <div class="paso-escaneo"><div class="paso-num">2</div><div class="paso-texto">En esta PC, instala el programa gratis desde <strong>barcodetopc.com</strong></div></div>
-        <div class="paso-escaneo"><div class="paso-num">3</div><div class="paso-texto">Misma WiFi en celular y PC — se emparejan solos</div></div>
-        <div class="paso-escaneo"><div class="paso-num">4</div><div class="paso-texto">Clic en el cuadro de código aquí, luego escanea desde el celular — el código aparece solo</div></div>
+        <div class="paso-escaneo"><div class="paso-num">1</div><div class="paso-texto"><strong>Conecta la pistola lectora</strong> al puerto USB de esta PC (funciona como un teclado, no necesita instalar nada)</div></div>
+        <div class="paso-escaneo"><div class="paso-num">2</div><div class="paso-texto">En <strong>Facturación</strong> basta con abrir la pantalla: no hace falta hacer clic en ningún campo</div></div>
+        <div class="paso-escaneo"><div class="paso-num">3</div><div class="paso-texto">Apunta al código y dispara: el producto se agrega al carrito solo</div></div>
+        <div class="paso-escaneo"><div class="paso-num">4</div><div class="paso-texto">Para <strong>registrar un producto nuevo</strong>, haz clic en el cuadro "Código de Barras" del formulario y escanea ahí</div></div>
       </div>
-      <div class="alt-sin-app"><i class="fas fa-keyboard"></i><span><strong>A mano:</strong> escribe el número bajo las rayas del código y Enter.</span></div>
+      <div class="alt-sin-app"><i class="fas fa-keyboard"></i><span><strong>A mano:</strong> escribe el número bajo las rayas del código y presiona Enter.</span></div>
     </div>
     <div class="modal-footer"><button class="btn-primary" onclick="cerrarModal('modal-como-escanear')"><i class="fas fa-check"></i> Entendido</button></div>
   </div>
@@ -415,10 +420,33 @@
     </div>
   </div>
 </div>
-<div class="modal-overlay" id="modal-scanner-camara">
+<!-- Ventana: pausar la factura actual -->
+<div class="modal-overlay" id="modal-pausar">
   <div class="modal modal-sm">
-    <div class="modal-header"><h3><i class="fas fa-camera"></i> Cámara de esta PC</h3><button class="modal-close" onclick="cerrarScannerCamara()"><i class="fas fa-times"></i></button></div>
-    <div class="modal-body"><div id="camara-reader"></div><p class="scanner-hint"><i class="fas fa-circle-info"></i> Apunta al código. Si no ves imagen, revisa permiso de cámara y que esta PC tenga una.</p></div>
+    <div class="modal-header"><h3><i class="fas fa-pause-circle"></i> Pausar factura</h3><button class="modal-close" onclick="cerrarModal('modal-pausar')"><i class="fas fa-times"></i></button></div>
+    <div class="modal-body">
+      <p class="pausa-ayuda">La factura se guarda tal como está y la puedes retomar después. El inventario no se descuenta hasta que se cobre.</p>
+      <div class="form-group"><label>Nombre o referencia (opcional)</label><input type="text" id="pausa-nombre" maxlength="60" placeholder="Ej: Cliente de la camisa roja" autocomplete="off"></div>
+    </div>
+    <div class="modal-footer"><button class="btn-secondary" onclick="cerrarModal('modal-pausar')">Cancelar</button><button class="btn-primary" id="btn-guardar-pausa" onclick="confirmarPausar()"><i class="fas fa-pause"></i> Pausar</button></div>
+  </div>
+</div>
+
+<!-- Ventana: facturas en pausa (retomar o eliminar) -->
+<div class="modal-overlay" id="modal-pausadas">
+  <div class="modal">
+    <div class="modal-header"><h3><i class="fas fa-pause-circle"></i> Facturas en pausa</h3><button class="modal-close" onclick="cerrarModal('modal-pausadas')"><i class="fas fa-times"></i></button></div>
+    <div class="modal-body"><div id="pausadas-lista"></div></div>
+    <div class="modal-footer"><button class="btn-primary" onclick="cerrarModal('modal-pausadas')">Cerrar</button></div>
+  </div>
+</div>
+
+<!-- Ventana: revisión de productos mal elaborados -->
+<div class="modal-overlay" id="modal-revision">
+  <div class="modal">
+    <div class="modal-header"><h3><i class="fas fa-clipboard-check"></i> Revisión de productos</h3><button class="modal-close" onclick="cerrarModal('modal-revision')"><i class="fas fa-times"></i></button></div>
+    <div class="modal-body"><div id="revision-lista"></div></div>
+    <div class="modal-footer"><button class="btn-primary" onclick="cerrarModal('modal-revision')">Cerrar</button></div>
   </div>
 </div>
 
