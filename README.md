@@ -1,142 +1,110 @@
-# DE TODITO MARKET MyF, C.A — Sistema de Inventario y Facturación
+[README.md](https://github.com/user-attachments/files/34665803/README.md)
+# DE TODITO MARKET MyF, C.A — Inventario y Facturación
 
-Versión lista para producción.
+## 1. Base de datos: MySQL
+
+Todo (productos, stock, ventas, pagos, facturas en pausa, contraseña) se guarda en **MySQL**.
+
+1. Ten MySQL (o MariaDB) encendido.
+2. Abre `config.py` y pon tus datos (por defecto la base se llama `db`): `host`, `port`, `user`, `password` y `database` (nombre de tu base ya migrada).
+   También puedes usar variables de entorno `DETODITO_DB_HOST`, `DETODITO_DB_PORT`, `DETODITO_DB_USER`, `DETODITO_DB_PASSWORD`, `DETODITO_DB_NAME`.
+   Si necesitas cargar tus datos en un MySQL vacío: `mysql -u USUARIO -p db < data.sql`.
+3. Al iniciar, el programa **revisa y ajusta solo** la base:
+   - agrega clave primaria y numeración automática (`AUTO_INCREMENT`) a los `id` (una migración desde SQLite los deja sin clave),
+   - amplía columnas que quedaron del tamaño justo de los datos (por ejemplo `cantidad` con máximo 9.99, el número de factura con máximo 127, nombres de 10 letras, la ruta de la foto de 62 caracteres),
+   - elimina restos de SQLite (`sqlite_sequence`) y columnas obsoletas, solo si están vacías,
+   - crea las tablas que falten (incluida la de pagos y la de facturas en pausa),
+   - convierte a `DECIMAL` el stock, las cantidades y los precios si al migrar quedaron como `INT`/`DOUBLE` (así no se pierden los decimales de kg/litros),
+   - copia los pagos de las facturas antiguas a la tabla nueva de pagos.
+   No borra ni cambia tus datos.
+
+**Respaldo:** usa `mysqldump` (o MySQL Workbench → Data Export) con frecuencia.
+
+### Probar que todo funciona con tu MySQL
+
+```bash
+python probar_mysql.py
+```
+
+Crea una base **temporal**, simula una migración desde SQLite, ejecuta el flujo completo (ventas, pagos mixtos, pausa, reportes) y la borra. No toca tus datos. Si algo falla, copia el resultado completo.
 
 ---
 
-## ¿Dónde se guardan los datos?
+## 2. Cómo ejecutarlo
 
-Todos los datos (productos, stock, ventas, contraseña, métodos de pago, tasa del dólar) se guardan en **un solo archivo**:
+**Windows:** doble clic en `ejecutar.bat` (instala dependencias y arranca).
 
-```
-inventario/instance/inventario.db
-```
-
-Es una base de datos **SQLite** (archivo local).
-
-### Cómo revisar o respaldar tus datos
-
-1. Cierra el programa.
-2. Copia el archivo `instance/inventario.db` a un USB o a la nube (Google Drive, etc.).
-3. Para restaurar: reemplaza ese archivo por tu copia.
-
-También puedes abrir `inventario.db` con programas gratuitos como **DB Browser for SQLite** (https://sqlitebrowser.org) y ver tablas, exportar a Excel, etc.
-
-### ¿Base de datos en la nube?
-
-Para una sola tienda / una sola PC **es mejor dejarla local** (más simple, más rápida, sin costo mensual y funciona sin internet).
-
-Solo conviene nube si:
-- Varias personas van a usar el sistema desde sitios diferentes al mismo tiempo.
-- Quieres acceso remoto permanente.
-
-Si en el futuro lo necesitas, se puede migrar a PostgreSQL o MySQL en la nube.
-
----
-
-## Cómo ejecutarlo (modo normal)
-
-1. Instala Python 3.10 o superior.
-2. Abre una terminal en la carpeta del proyecto.
-3. Ejecuta:
+**Manual:**
 
 ```bash
 pip install -r requirements.txt
 python app.py
 ```
 
-4. Abre en el navegador: **http://localhost:5000**
-
-La primera vez te pedirá crear la contraseña de administrador (mínimo 8 caracteres, mayúscula, minúscula y número).
-
----
-
-## Cómo crear un .exe (Windows)
-
-En la misma PC con Windows:
-
-```bash
-pip install pyinstaller
-pyinstaller --onefile --add-data "templates;templates" --add-data "static;static" --name "DeToditoMarket" app.py
-```
-
-El ejecutable quedará en la carpeta `dist/DeToditoMarket.exe`.
-
-**Importante:**  
-La base de datos se crea junto al .exe en una carpeta `instance`.  
-Copia también las carpetas `templates` y `static` junto al .exe (o usa la opción `--add-data` como arriba).
-
-Si tienes problemas con el .exe, es más estable ejecutarlo con `python app.py`.
+Abre **https://localhost:5000**. La primera vez pide crear la contraseña de administrador
+(mínimo 8 caracteres, con mayúscula, minúscula y número).
 
 ---
 
-## Stock Mínimo y Máximo
+## 3. Pistola lectora de códigos
 
-- **Stock Mínimo**: cuando el stock llega a este número o menos → aviso “Stock Bajo”.
-- **Stock Máximo**: (opcional) cuando el stock llega a este número o más → aviso “Exceso”.  
-  Si lo dejas en **0** = sin límite máximo.
+Conecta la pistola USB (funciona como teclado). En **Facturación** no hace falta hacer clic en nada: al disparar, el producto se agrega al carrito.
+Para registrar un producto nuevo, haz clic en "Código de Barras" del formulario y escanea ahí.
+Si disparas un código que no existe, el administrador recibe el formulario de producto con el código ya escrito.
 
 ---
 
-## Estructura del proyecto
+## 4. Factura en pausa
+
+En Facturación, con productos en el carrito, pulsa **Pausar** para guardar la factura y atender a otro cliente.
+El botón **En pausa (n)** muestra las guardadas: **Retomar** (si ya tienes otra en curso, esta se pausa sola para no perderla) o descartar.
+Se guardan en MySQL: sobreviven a un refresco y se ven desde cualquier equipo. El inventario no se descuenta hasta cobrar, y al retomar se usan los precios y el stock de ese momento.
+
+---
+
+## 5. Pagos
+
+- Pago en partes: varios métodos y monedas en una misma factura (por ejemplo, Efectivo en $ + Pago Móvil en Bs).
+- Cada pago se guarda por separado con su método, moneda, monto, referencia y la tasa del día. Los reportes y el panel reparten cada pago a su método.
+- Los precios y totales se calculan siempre en el servidor, con la base de datos, redondeados a centavos.
+- En una factura con un solo pago, al editarla el pago se ajusta al nuevo total. Una factura con varios métodos no admite cambiar su total (anúlala y factura de nuevo).
+
+---
+
+## 6. Validaciones de productos y pagos
+
+- **Producto mal elaborado:** al guardar un producto se revisa y se avisa en notificaciones si el precio de venta es $0, negativo o no es número; si el precio es demasiado alto (dígito de más); si el stock es negativo o con decimales en un producto "por unidad"; si el stock máximo es menor que el mínimo; o si el nombre es muy corto / sin letras. Los precios aceptan hasta 4 decimales (por ejemplo $0.034 por caramelo). Si el precio de venta es menor al costo, se guarda pero con un aviso de pérdida.
+- **Productos duplicados:** no se puede crear (ni renombrar) un producto con el mismo nombre de otro, sin importar mayúsculas, acentos o espacios sobrantes: "Huevo", "HUEVO" y "huevo" son el mismo; "Huevo cartón" sí es distinto. Los productos antiguos que ya estén repetidos se pueden seguir editando sin cambiar el nombre.
+- **Revisar datos:** en Inventario, el botón "Revisar datos" lista los productos que hay que corregir (precio en $0, nombres repetidos, stock raro) y avisa al entrar. Un producto con precio $0 no se puede vender hasta corregirlo.
+- **Números negativos:** ningún campo numérico acepta "-". En Facturación, la cantidad debe ser mayor que 0 y entera para productos por unidad (kg y litros aceptan decimales).
+- **Pago en partes:** el monto debe ser mayor que 0 y no puede superar lo que falta; si se deja vacío se sugiere exactamente lo que falta. En Pago Móvil la referencia no puede repetirse (ni en la misma factura ni en otra ya registrada).
+
+---
+
+## 7. Cámara del celular (solo fotos de productos)
+
+El programa crea solo el certificado HTTPS (`cert.pem`, `key.pem`). En el celular (misma WiFi) entra a la dirección **https://** que aparece al arrancar y acepta el aviso (Avanzado → Continuar). No compartas `key.pem`.
+
+---
+
+## Estructura
 
 ```
 DeToditoMarket_Final/
-├── app.py                 ← Programa principal
-├── database.py            ← Definición de la base de datos
+├── app.py            ← Servidor y reglas del negocio
+├── database.py       ← Conexión a MySQL, tablas y migraciones
+├── config.py         ← Datos de conexión a MySQL
+├── probar_mysql.py   ← Prueba automática con tu MySQL (usa una base temporal)
+├── ejecutar.bat      ← Arranque en Windows
 ├── requirements.txt
-├── README.md
-├── instance/
-│   └── inventario.db      ← AQUÍ se guardan TODOS tus datos
-├── static/
-│   ├── css/style.css
-│   ├── js/app.js
-│   └── uploads/           ← Fotos de productos
-└── templates/
-    └── index.html
+├── instance/         ← secret.key (se crea sola)
+├── cert.pem / key.pem ← certificado HTTPS (se crean solos al iniciar)
+├── static/ (css, js, uploads con las fotos)
+└── templates/index.html
 ```
 
----
+## Notas
 
-## Notas importantes
-
-- No subas la carpeta `.venv` ni `__pycache__`.
-- Haz copias de seguridad de `instance/inventario.db` con frecuencia.
-- El sistema está limpio (sin productos de ejemplo).
-- Tipografía profesional: Inter + JetBrains Mono.
-
-
----
-
-## Activar cámara del celular (HTTPS)
-
-1. Ejecuta **generar_https.bat** (una sola vez).
-2. Se crean los archivos  y .
-3. Vuelve a abrir el programa con **ejecutar.bat**.
-4. En el celular abre la dirección que muestra la pantalla (empieza con **https://**).
-5. Acepta el aviso de "sitio no seguro" / "Avanzado → Continuar".
-6. Ya puedes usar el botón de la cámara 📷 desde el celular.
-
-Sin estos archivos el programa sigue funcionando normal por http, pero el navegador del celular bloquea la cámara.
-
----
-
-## Si al guardar un producto dice error
-
-1. Cierra el programa por completo.
-2. Vuelve a abrirlo con **ejecutar.bat** (así se actualiza la base de datos).
-3. Intenta guardar de nuevo.
-
-Si sigue fallando, el mensaje ahora muestra el motivo exacto.
-
-
-## Cámara del celular
-
-Al abrir el programa se activa HTTPS solo (crea el certificado la primera vez).
-
-1. Abre con **ejecutar.bat**.
-2. En el celular entra a la dirección **https://** que aparece en pantalla.
-3. Acepta el aviso de seguridad (Avanzado → Continuar). Solo la primera vez.
-4. Usa el botón 📷 para escanear con la cámara del celular.
-
-No hace falta ejecutar nada extra.
+- Los íconos y las fuentes se descargan de internet; sin conexión el sistema funciona, pero pueden no verse los íconos.
+- La tasa del dólar se obtiene de internet y se guarda; sin conexión se usa la última o se escribe a mano.
+- Haz copias de seguridad de MySQL con frecuencia.
