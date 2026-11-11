@@ -3,5 +3,4 @@ requests==2.31.0
 openpyxl==3.1.2
 reportlab==4.2.5
 cryptography>=41.0.0
-mysql-connector-python
-gunicorn
+PyMySQL==1.1.1
