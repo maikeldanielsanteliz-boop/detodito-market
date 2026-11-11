@@ -2005,4 +2005,6 @@ if __name__ == '__main__':
     print("   Primera vez: se te pedira crear la contraseña de admin")
     print("=" * 56 + "\n")
     # Escucha en toda la red local (0.0.0.0) para poder entrar desde otros equipos
-    app.run(debug=False, port=5000, host='0.0.0.0', ssl_context=ssl_ctx)
+    port = int(os.environ.get("PORT", 5000))
+    print(f"\n   {NOMBRE_TIENDA} corriendo en el puerto {port}\n")
+    app.run(debug=False, port=port, host='0.0.0.0')
